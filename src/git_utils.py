@@ -1,21 +1,25 @@
 """
 Git utilities for ACM Compass
-Handles version control operations for the data directory
+Handles version control operations by cloning a separate data repository
 """
 import json
+import shutil
 from pathlib import Path
 from subprocess import run as _run, PIPE
 from datetime import datetime
 from typing import Optional
 
-from .data_manager import BASE_DIR, DATA_DIR
+from .data_manager import BASE_DIR
+
+# Data directory is now a cloned git repository
+DATA_DIR = BASE_DIR / "data"
 
 # Git configuration cache file
 GIT_CONFIG_FILE = BASE_DIR / ".git_config.json"
 
 
-def _sh(cmd: str, cwd: Path = DATA_DIR) -> dict:
-    """Execute shell command in data directory and return result"""
+def _sh(cmd: str, cwd: Path = BASE_DIR) -> dict:
+    """Execute shell command and return result"""
     p = _run(cmd, shell=True, cwd=str(cwd), stdout=PIPE, stderr=PIPE, text=True)
     return {
         "returncode": p.returncode,
@@ -33,14 +37,15 @@ def load_git_config() -> dict:
             return data
         except Exception:
             pass
-    return {"repo_url": "", "branch": "main"}
+    return {"repo_url": "", "branch": "main", "cloned": False}
 
 
-def save_git_config(repo_url: str, branch: str = "main") -> None:
+def save_git_config(repo_url: str, branch: str = "main", cloned: bool = True) -> None:
     """Save git configuration to cache file"""
     config = {
         "repo_url": repo_url.strip(),
         "branch": branch.strip(),
+        "cloned": cloned,
         "last_updated": datetime.now().isoformat()
     }
     GIT_CONFIG_FILE.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -48,128 +53,164 @@ def save_git_config(repo_url: str, branch: str = "main") -> None:
 
 def is_data_git_repo() -> bool:
     """Check if data directory is a git repository"""
+    if not DATA_DIR.exists():
+        return False
     r = _sh("git rev-parse --is-inside-work-tree", cwd=DATA_DIR)
     return r["returncode"] == 0 and r["stdout"].strip() == "true"
 
 
+def get_remote_url() -> Optional[str]:
+    """Get the remote URL of data repository"""
+    if not is_data_git_repo():
+        return None
+    r = _sh("git remote get-url origin", cwd=DATA_DIR)
+    if r["returncode"] == 0:
+        return r["stdout"].strip()
+    return None
+
+
 def get_current_branch() -> Optional[str]:
     """Get current git branch name in data directory"""
+    if not is_data_git_repo():
+        return None
     r = _sh("git rev-parse --abbrev-ref HEAD", cwd=DATA_DIR)
     return r["stdout"].strip() if r["returncode"] == 0 else None
 
 
-def init_data_repo(repo_url: str, branch: str = "main") -> str:
-    """Initialize data directory as a git repository and configure remote"""
+def backup_existing_data() -> str:
+    """Backup existing data directory"""
+    if not DATA_DIR.exists():
+        return ""
+
+    # Find a unique backup name
+    backup_base = BASE_DIR / "data.backup"
+    backup_dir = backup_base
+    counter = 1
+    while backup_dir.exists():
+        backup_dir = BASE_DIR / f"data.backup.{counter}"
+        counter += 1
+
+    # Move existing data to backup
+    shutil.move(str(DATA_DIR), str(backup_dir))
+    return f"✓ 已将现有 data/ 备份到 {backup_dir.name}\n"
+
+
+def clone_data_repo(repo_url: str, branch: str = "main") -> str:
+    """Clone remote repository as data directory"""
     output = ""
 
-    # Check if already a git repo
-    if is_data_git_repo():
-        output += "ℹ️  data/ 目录已经是 Git 仓库\n\n"
-    else:
-        # Initialize git repo
-        output += "=== 初始化 Git 仓库 ===\n"
-        result = _sh("git init", cwd=DATA_DIR)
-        output += f"{result['stdout']}\n"
-        if result['returncode'] != 0:
-            output += f"stderr: {result['stderr']}\n"
-            output += "\n❌ Git 初始化失败"
-            return output
-        output += "✓ Git 仓库初始化成功\n\n"
-
-    # Configure remote
+    # Validate repo URL
     if not repo_url or not repo_url.strip():
-        output += "⚠️  未提供仓库地址，跳过远程配置\n"
-        return output
+        return "❌ 请提供有效的仓库地址"
 
-    output += "=== 配置远程仓库 ===\n"
+    # Check if data directory already exists
+    if DATA_DIR.exists():
+        if is_data_git_repo():
+            # Already a git repo, check if it's the same remote
+            current_remote = get_remote_url()
+            if current_remote == repo_url.strip():
+                output += f"ℹ️  data/ 已经是该仓库的克隆\n"
+                output += f"🔗 远程地址: {current_remote}\n"
+                save_git_config(repo_url, branch, True)
+                return output
+            else:
+                output += "⚠️  data/ 已存在且连接到不同的远程仓库\n"
+                output += f"当前远程: {current_remote}\n"
+                output += f"请求远程: {repo_url}\n\n"
+                output += "请选择：\n"
+                output += "1. 手动删除 data/ 目录后重试\n"
+                output += "2. 或使用下面的「备份并重新克隆」功能\n"
+                return output
+        else:
+            # Directory exists but not a git repo, need to backup
+            output += "⚠️  data/ 目录已存在但不是 Git 仓库\n"
+            output += backup_existing_data()
 
-    # Check if remote 'origin' exists
-    check_remote = _sh("git remote get-url origin", cwd=DATA_DIR)
+    # Clone the repository
+    output += f"=== 克隆远程仓库 ===\n"
+    output += f"仓库地址: {repo_url}\n"
+    output += f"分支: {branch}\n\n"
 
-    if check_remote['returncode'] == 0:
-        # Remote exists, update it
-        result = _sh(f"git remote set-url origin {repo_url}", cwd=DATA_DIR)
-        output += f"更新远程仓库地址: {repo_url}\n"
-    else:
-        # Remote doesn't exist, add it
-        result = _sh(f"git remote add origin {repo_url}", cwd=DATA_DIR)
-        output += f"添加远程仓库: {repo_url}\n"
+    # Clone with specific branch
+    result = _sh(f'git clone --branch "{branch}" "{repo_url}" data', cwd=BASE_DIR)
 
     if result['returncode'] != 0:
-        output += f"stderr: {result['stderr']}\n"
-        output += "\n❌ 远程仓库配置失败"
-        return output
+        # Try without branch specification (might be first clone)
+        output += "尝试默认分支克隆...\n"
+        result = _sh(f'git clone "{repo_url}" data', cwd=BASE_DIR)
+
+        if result['returncode'] != 0:
+            output += f"stderr: {result['stderr']}\n"
+            output += "\n❌ 克隆失败\n"
+            output += "请检查：\n"
+            output += "1. 仓库地址是否正确\n"
+            output += "2. 是否有访问权限\n"
+            output += "3. 网络连接是否正常\n"
+            return output
+
+    output += result['stdout']
+    output += "\n✓ 成功克隆远程仓库到 data/ 目录\n"
 
     # Save configuration
-    save_git_config(repo_url, branch)
-    output += f"✓ 远程仓库配置成功\n"
-    output += f"✓ 配置已保存到缓存\n"
+    save_git_config(repo_url, branch, True)
+    output += "✓ 配置已保存\n"
 
     return output
 
 
+def ensure_data_repo(repo_url: str, branch: str = "main") -> tuple:
+    """Ensure data directory is a cloned repository. Returns (success, message)"""
+    # Check if already cloned
+    if is_data_git_repo():
+        current_remote = get_remote_url()
+        if current_remote == repo_url.strip():
+            return True, ""
+        else:
+            return False, f"⚠️  data/ 连接到不同的仓库: {current_remote}"
+
+    # Need to clone
+    if DATA_DIR.exists():
+        return False, "⚠️  data/ 存在但不是 Git 仓库，请先使用「克隆 Data 仓库」"
+
+    return False, "⚠️  data/ 不存在，请先使用「克隆 Data 仓库」"
+
+
 def git_pull(repo_url: str, branch: str = "main") -> str:
-    """Execute git pull for data directory and return formatted output"""
+    """Execute git pull in data directory"""
     output = ""
 
-    # Ensure repo is initialized
-    if not is_data_git_repo():
-        output += init_data_repo(repo_url, branch)
-        output += "\n"
-    else:
-        # Update remote if provided
-        if repo_url and repo_url.strip():
-            result = _sh(f"git remote set-url origin {repo_url}", cwd=DATA_DIR)
-            save_git_config(repo_url, branch)
-
-    # Check if remote is configured
-    check_remote = _sh("git remote get-url origin", cwd=DATA_DIR)
-    if check_remote['returncode'] != 0:
-        output += "❌ 远程仓库未配置\n请先输入仓库地址"
+    # Ensure repository is cloned
+    success, msg = ensure_data_repo(repo_url, branch)
+    if not success:
+        output += msg + "\n"
         return output
 
     # Pull from remote
     output += f"=== git pull origin {branch} ===\n"
-    result = _sh(f"git pull origin {branch}", cwd=DATA_DIR)
+    # Use quotes to protect branch name from shell interpretation
+    result = _sh(f'git pull origin "{branch}"', cwd=DATA_DIR)
     output += f"Return code: {result['returncode']}\n\n"
-    output += f"stdout:\n{result['stdout']}\n\n"
+    output += result['stdout']
 
     if result['stderr']:
-        output += f"stderr:\n{result['stderr']}\n"
+        output += f"\n{result['stderr']}"
 
     if result['returncode'] == 0:
         output += "\n✓ 成功拉取远程更新"
     else:
-        # Try with --allow-unrelated-histories for first pull
-        output += "\n第一次拉取？尝试使用 --allow-unrelated-histories...\n"
-        result2 = _sh(f"git pull origin {branch} --allow-unrelated-histories", cwd=DATA_DIR)
-        output += f"\n{result2['stdout']}\n"
-        if result2['returncode'] == 0:
-            output += "\n✓ 成功拉取远程更新"
-        else:
-            output += "\n❌ 拉取失败"
+        output += "\n❌ 拉取失败"
 
     return output
 
 
 def git_push(repo_url: str, message: Optional[str] = None, branch: str = "main") -> str:
-    """Execute git add, commit, and push for data directory. Return formatted output"""
+    """Execute git add, commit, and push in data directory"""
     output = ""
 
-    # Ensure repo is initialized
-    if not is_data_git_repo():
-        output += init_data_repo(repo_url, branch)
-        output += "\n"
-    else:
-        # Update remote if provided
-        if repo_url and repo_url.strip():
-            result = _sh(f"git remote set-url origin {repo_url}", cwd=DATA_DIR)
-            save_git_config(repo_url, branch)
-
-    # Check if remote is configured
-    check_remote = _sh("git remote get-url origin", cwd=DATA_DIR)
-    if check_remote['returncode'] != 0:
-        output += "❌ 远程仓库未配置\n请先输入仓库地址"
+    # Ensure repository is cloned
+    success, msg = ensure_data_repo(repo_url, branch)
+    if not success:
+        output += msg + "\n"
         return output
 
     if not message or not message.strip():
@@ -178,7 +219,6 @@ def git_push(repo_url: str, message: Optional[str] = None, branch: str = "main")
     # git add
     output += "=== git add -A ===\n"
     result = _sh("git add -A", cwd=DATA_DIR)
-    output += f"Return code: {result['returncode']}\n"
     if result['returncode'] != 0:
         output += f"stderr: {result['stderr']}\n"
         output += "\n❌ git add 失败"
@@ -189,50 +229,48 @@ def git_push(repo_url: str, message: Optional[str] = None, branch: str = "main")
     if not diff['stdout'].strip():
         return "ℹ️ 没有需要提交的更改"
 
-    output += f"\nChanged files:\n{diff['stdout']}\n"
+    output += f"Changed files:\n{diff['stdout']}\n"
 
     # git commit
     output += "\n=== git commit ===\n"
     msg_escaped = message.replace('"', '\\"')
     result = _sh(f'git commit -m "{msg_escaped}"', cwd=DATA_DIR)
-    output += f"Return code: {result['returncode']}\n"
-    output += f"stdout: {result['stdout']}\n"
+    output += result['stdout']
     if result['returncode'] != 0:
-        output += f"stderr: {result['stderr']}\n"
+        output += f"\nstderr: {result['stderr']}"
         output += "\n❌ git commit 失败"
         return output
 
     # git push
     output += f"\n=== git push origin {branch} ===\n"
-    result = _sh(f"git push origin {branch}", cwd=DATA_DIR)
-    output += f"Return code: {result['returncode']}\n"
-    output += f"stdout: {result['stdout']}\n"
+    result = _sh(f'git push origin "{branch}"', cwd=DATA_DIR)
+    output += result['stdout']
 
     if result['returncode'] == 0:
         output += "\n✓ 成功推送到远程"
-        return output
-
-    # Try with upstream
-    output += f"\nTrying: git push -u origin {branch}\n"
-    result = _sh(f"git push -u origin {branch}", cwd=DATA_DIR)
-    output += f"Return code: {result['returncode']}\n"
-    output += f"stdout: {result['stdout']}\n"
-
-    if result['stderr']:
-        output += f"stderr: {result['stderr']}\n"
-
-    if result['returncode'] == 0:
-        output += "\n✓ 成功推送到远程（设置上游分支）"
     else:
-        output += "\n❌ 推送失败"
+        # Try with upstream
+        output += f"\n尝试: git push -u origin {branch}\n"
+        result = _sh(f'git push -u origin "{branch}"', cwd=DATA_DIR)
+        output += result['stdout']
+
+        if result['returncode'] == 0:
+            output += "\n✓ 成功推送到远程（设置上游分支）"
+        else:
+            if result['stderr']:
+                output += f"\nstderr: {result['stderr']}"
+            output += "\n❌ 推送失败"
 
     return output
 
 
 def get_repo_status() -> str:
     """Get current repository status information"""
+    if not DATA_DIR.exists():
+        return "📂 data/ 目录不存在\n\n请先克隆远程仓库"
+
     if not is_data_git_repo():
-        return "📂 data/ 目录尚未初始化为 Git 仓库"
+        return "📂 data/ 目录存在但不是 Git 仓库\n\n请使用「克隆 Data 仓库」功能"
 
     output = "📂 Data 仓库状态\n\n"
 
@@ -242,9 +280,9 @@ def get_repo_status() -> str:
         output += f"🌿 当前分支: {branch}\n"
 
     # Get remote URL
-    remote = _sh("git remote get-url origin", cwd=DATA_DIR)
-    if remote['returncode'] == 0:
-        output += f"🔗 远程仓库: {remote['stdout'].strip()}\n"
+    remote = get_remote_url()
+    if remote:
+        output += f"🔗 远程仓库: {remote}\n"
     else:
         output += "🔗 远程仓库: 未配置\n"
 
@@ -254,5 +292,25 @@ def get_repo_status() -> str:
         output += f"\n📝 未提交的更改:\n{status['stdout']}"
     else:
         output += "\n✅ 工作目录干净"
+
+    # Get last commit
+    last_commit = _sh("git log -1 --oneline", cwd=DATA_DIR)
+    if last_commit['returncode'] == 0 and last_commit['stdout']:
+        output += f"\n\n📌 最新提交:\n{last_commit['stdout'].strip()}"
+
+    return output
+
+
+def backup_and_reclone(repo_url: str, branch: str = "main") -> str:
+    """Backup existing data directory and clone fresh repository"""
+    output = "=== 备份并重新克隆 ===\n\n"
+
+    # Backup existing directory
+    if DATA_DIR.exists():
+        output += backup_existing_data()
+
+    # Clone repository
+    output += "\n"
+    output += clone_data_repo(repo_url, branch)
 
     return output

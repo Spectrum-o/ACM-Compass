@@ -52,7 +52,7 @@ def save_contest_handler(
     if not name or not name.strip():
         return "❌ 比赛名称不能为空！", load_contests_ui()
 
-    total_problems = max(1, min(15, total_problems))
+    total_problems = max(1, min(26, total_problems))
 
     # Parse problem data
     problems = []
@@ -103,49 +103,75 @@ def delete_contest_handler(contest_id: str):
 def select_contest_handler(evt: gr.SelectData):
     """Handle contest table row selection"""
     if evt.index[1] != 0:  # If not clicking on ID column
-        return [gr.update()] * 50
+        return [gr.update()] * (5 + 26 * 4 + 1)  # 5 basic fields + 26 problems * 4 fields each + 1 title
 
     contest_id = evt.value
     items = load_contests()
 
     for it in items:
         if it.get('id') == contest_id:
+            total_problems = it.get('total_problems', 12)
+            end_letter = LETTERS[total_problems - 1]
+            title = f"### 题目统计 (A-{end_letter})"
+
             updates = [
                 gr.update(value=contest_id),
                 gr.update(value=it.get('name', '')),
-                gr.update(value=it.get('total_problems', 12)),
+                gr.update(value=total_problems),
                 gr.update(value=it.get('rank_str', '')),
                 gr.update(value=it.get('summary', ''))
             ]
 
-            # Update problem fields
+            # Update problem fields and row visibility
             problems = it.get('problems', [])
-            for i in range(15):
+            for i in range(26):
                 if i < len(problems):
                     p = problems[i]
                     updates.extend([
                         gr.update(value=p.get('pass_count', 0)),
                         gr.update(value=p.get('attempt_count', 0)),
-                        gr.update(value=p.get('my_status', 'unsubmitted'))
+                        gr.update(value=p.get('my_status', 'unsubmitted')),
+                        gr.update(visible=i < total_problems)  # Row visibility
                     ])
                 else:
                     updates.extend([
                         gr.update(value=0),
                         gr.update(value=0),
-                        gr.update(value='unsubmitted')
+                        gr.update(value='unsubmitted'),
+                        gr.update(visible=i < total_problems)  # Row visibility
                     ])
 
+            # Add title update at the end
+            updates.append(title)
             return updates
 
-    return [gr.update()] * 50
+    return [gr.update()] * (5 + 26 * 4 + 1)
 
 
 def clear_contest_handler():
     """Clear the contest form"""
     updates = ["", "", 12, "", ""]
-    for i in range(15):
-        updates.extend([0, 0, "unsubmitted"])
+    for i in range(26):
+        updates.extend([0, 0, "unsubmitted", gr.update(visible=i < 12)])  # Show first 12 rows by default
+    # Add default title for 12 problems
+    updates.append("### 题目统计 (A-L)")
     return updates
+
+
+def update_problem_rows_visibility(total_problems: int):
+    """Update visibility of problem rows based on total_problems"""
+    if total_problems is None:
+        total_problems = 12
+    total_problems = max(1, min(26, int(total_problems)))
+
+    # Update title with dynamic range
+    end_letter = LETTERS[total_problems - 1]
+    title = f"### 题目统计 (A-{end_letter})"
+
+    # Update row visibility
+    visibility_updates = [gr.update(visible=i < total_problems) for i in range(26)]
+
+    return [title] + visibility_updates
 
 
 def build_contest_tab():
@@ -172,20 +198,21 @@ def build_contest_tab():
 
         with gr.Row():
             contest_name = gr.Textbox(label="* 比赛名称", placeholder="例如：Codeforces Round 900")
-            contest_total_problems = gr.Number(label="题目数量", value=12, precision=0, minimum=1, maximum=15)
+            contest_total_problems = gr.Number(label="题目数量", value=12, precision=0, minimum=1, maximum=26)
 
         with gr.Row():
             contest_rank = gr.Textbox(label="排名", placeholder="例如：10/150")
 
         contest_summary = gr.Textbox(label="赛后总结", placeholder="比赛总结、反思等...", lines=5)
 
-        gr.Markdown("### 题目统计 (A-O)")
+        problem_stats_title = gr.Markdown("### 题目统计 (A-L)")  # Default shows 12 problems
 
-        # Create problem input fields dynamically
+        # Create problem input fields dynamically with visibility control
         problem_inputs = []
-        for i in range(15):
+        problem_rows = []
+        for i in range(26):
             letter = LETTERS[i]
-            with gr.Row():
+            with gr.Row(visible=(i < 12)) as problem_row:  # First 12 visible by default
                 gr.Markdown(f"**{letter}**")
                 p_pass = gr.Number(label=f"{letter} 通过人数", value=0, precision=0, scale=1)
                 p_attempt = gr.Number(label=f"{letter} 尝试人数", value=0, precision=0, scale=1)
@@ -196,6 +223,7 @@ def build_contest_tab():
                     scale=1
                 )
                 problem_inputs.extend([p_pass, p_attempt, p_status])
+                problem_rows.append(problem_row)
 
         with gr.Row():
             save_contest_btn = gr.Button("💾 保存比赛", variant="primary")
@@ -209,16 +237,25 @@ def build_contest_tab():
             outputs=contests_table
         )
 
+        # Combine all inputs and outputs (including problem rows for visibility control)
         all_contest_inputs = [contest_id, contest_name, contest_total_problems, contest_rank, contest_summary] + problem_inputs
+        all_contest_outputs = all_contest_inputs + problem_rows + [problem_stats_title]
+
+        # Dynamic visibility control for problem rows and title
+        contest_total_problems.change(
+            fn=update_problem_rows_visibility,
+            inputs=contest_total_problems,
+            outputs=[problem_stats_title] + problem_rows
+        )
 
         contests_table.select(
             fn=select_contest_handler,
-            outputs=all_contest_inputs
+            outputs=all_contest_outputs
         )
 
         clear_contest_btn.click(
             fn=clear_contest_handler,
-            outputs=all_contest_inputs
+            outputs=all_contest_outputs
         )
 
         save_contest_btn.click(

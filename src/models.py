@@ -70,7 +70,7 @@ class ContestProblemIn(BaseModel):
 class ContestIn(BaseModel):
     """Input model for creating/updating contests"""
     name: str = Field(..., min_length=1, description="比赛名称")
-    total_problems: int = Field(..., ge=1, le=15, description="题目数量(≤15)")
+    total_problems: int = Field(..., ge=1, le=26, description="题目数量(≤26)")
     problems: List[ContestProblemIn] = Field(default_factory=list, description="题目数据 A..")
     rank_str: Optional[str] = Field(None, description="形如 a/b 的排名")
     summary: Optional[str] = Field(None, description="赛后总结")

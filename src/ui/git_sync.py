@@ -7,16 +7,25 @@ from datetime import datetime
 
 from ..git_utils import (
     git_pull, git_push, load_git_config,
-    get_repo_status, init_data_repo
+    get_repo_status, clone_data_repo, backup_and_reclone
 )
 
 
-def init_repo_handler(repo_url: str, branch: str):
-    """Handle repository initialization"""
+def clone_repo_handler(repo_url: str, branch: str):
+    """Handle repository cloning"""
     if not repo_url or not repo_url.strip():
         return "⚠️  请先输入仓库地址", "", "main"
 
-    output = init_data_repo(repo_url, branch)
+    output = clone_data_repo(repo_url, branch)
+    return output, repo_url, branch
+
+
+def backup_reclone_handler(repo_url: str, branch: str):
+    """Handle backup and reclone operation"""
+    if not repo_url or not repo_url.strip():
+        return "⚠️  请先输入仓库地址", "", "main"
+
+    output = backup_and_reclone(repo_url, branch)
     return output, repo_url, branch
 
 
@@ -57,10 +66,13 @@ def build_git_sync_tab():
         with gr.Accordion("📝 仓库配置", open=True):
             gr.Markdown("""
             **首次使用步骤：**
-            1. 在 GitHub/GitLab 等平台创建一个新的空仓库
+            1. 在 GitHub/GitLab 等平台创建一个新的空仓库（或使用已有仓库）
             2. 复制仓库的 HTTPS 或 SSH 地址（例如：`https://github.com/username/acm-data.git`）
-            3. 在下方输入仓库地址并点击"初始化 Data 仓库"
-            4. 之后可以正常使用拉取和推送功能
+            3. 在下方输入仓库地址并点击"克隆 Data 仓库"
+            4. 远程仓库将被克隆为本地的 data/ 目录
+            5. 之后可以正常使用拉取和推送功能
+
+            **注意：** 如果 data/ 目录已存在，克隆前会自动备份为 data.backup
             """)
 
             with gr.Row():
@@ -77,10 +89,11 @@ def build_git_sync_tab():
                 )
 
             with gr.Row():
-                init_btn = gr.Button("🔧 初始化 Data 仓库", variant="secondary", size="sm")
+                clone_btn = gr.Button("🔽 克隆 Data 仓库", variant="primary", size="sm")
+                backup_reclone_btn = gr.Button("🔄 备份并重新克隆", variant="secondary", size="sm")
                 status_btn = gr.Button("📊 查看仓库状态", variant="secondary", size="sm")
 
-            init_output = gr.Textbox(label="初始化输出", lines=5, interactive=False, value=initial_status)
+            repo_output = gr.Textbox(label="仓库操作输出", lines=8, interactive=False, value=initial_status)
 
         gr.Markdown("---")
 
@@ -111,26 +124,36 @@ def build_git_sync_tab():
         gr.Markdown("---")
         gr.Markdown("""
         **使用说明：**
-        1. **首次使用**：输入仓库地址并点击"初始化 Data 仓库"
+        1. **首次使用**：
+           - 输入远程仓库地址和分支名称
+           - 点击"克隆 Data 仓库"，将远程仓库克隆为本地 data/ 目录
+           - 如果 data/ 已存在会自动备份
         2. **日常使用**：
            - 开始工作前：点击"拉取远程更新"同步最新数据
            - 完成工作后：填写提交说明，点击"推送到远程"
         3. **多人协作**：定期拉取更新，避免冲突
-        4. **注意**：仓库地址会自动保存，下次打开自动加载
+        4. **切换仓库**：使用"备份并重新克隆"按钮
+        5. **注意**：仓库地址会自动保存，下次打开自动加载
 
-        **仓库范围：** 只同步 `data/` 目录（包含 problems.json、contests.json 和 solutions/）
+        **工作原理：** data/ 目录本身就是一个 Git 仓库，所有数据文件都在版本控制中
         """)
 
         # Event handlers
-        init_btn.click(
-            fn=init_repo_handler,
+        clone_btn.click(
+            fn=clone_repo_handler,
             inputs=[repo_url_input, branch_input],
-            outputs=[init_output, repo_url_input, branch_input]
+            outputs=[repo_output, repo_url_input, branch_input]
+        )
+
+        backup_reclone_btn.click(
+            fn=backup_reclone_handler,
+            inputs=[repo_url_input, branch_input],
+            outputs=[repo_output, repo_url_input, branch_input]
         )
 
         status_btn.click(
             fn=status_handler,
-            outputs=init_output
+            outputs=repo_output
         )
 
         pull_btn.click(

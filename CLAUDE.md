@@ -109,6 +109,47 @@ File System (data/*.json, data/solutions/*.md)
 - Markdown format with code highlighting support
 - `has_solution` field is computed at runtime
 
+## Git Version Control Workflow
+
+The `data/` directory is managed as a **separate cloned Git repository** for team collaboration:
+
+### Architecture
+
+- **Separate Repository**: `data/` is cloned from a remote Git repository (not a submodule of the main project)
+- **Configuration Cache**: Repository URL and branch are saved in `.git_config.json` (git-ignored)
+- **Auto-load**: Saved configuration is automatically loaded when opening the Git sync tab
+
+### First-time Setup
+
+1. User creates a remote repository on GitHub/GitLab (e.g., `https://github.com/user/acm-data.git`)
+2. User enters the repository URL and branch name in the Git sync tab
+3. User clicks "克隆 Data 仓库" (Clone Data Repository)
+4. System clones the remote repository as the local `data/` directory
+5. If `data/` already exists, it's automatically backed up to `data.backup` (or `data.backup.N`)
+
+### Daily Workflow
+
+- **Before work**: Click "拉取远程更新" (Pull) to sync latest changes
+- **After work**: Enter commit message and click "推送到远程" (Push)
+- **Multi-person collaboration**: Regular pulls prevent conflicts
+
+### Key Functions (`git_utils.py`)
+
+- `clone_data_repo()` - Clone remote repository as data/ directory
+- `backup_existing_data()` - Backup existing data/ before cloning
+- `ensure_data_repo()` - Validate data/ is cloned from correct remote
+- `backup_and_reclone()` - Backup and re-clone for switching repositories
+- `git_pull()` / `git_push()` - Standard Git operations in data/ directory
+- `get_repo_status()` - Display current repository status
+- `load_git_config()` / `save_git_config()` - Configuration persistence
+
+### Important Notes
+
+- The main project repository and data repository are **completely separate**
+- Only `data/` directory is version-controlled by the cloned repository
+- Users can switch to a different repository using "备份并重新克隆" button
+- All Git operations are performed in the `data/` directory context
+
 ## Important Patterns
 
 ### Adding New Features
