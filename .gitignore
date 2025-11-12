@@ -24,3 +24,8 @@ Thumbs.db
 *.bak.json
 *.backup.json
 *.log
+*.backup
+*.backup/
+
+# Git config cache (data repo settings)
+.git_config.json
