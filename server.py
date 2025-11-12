@@ -13,7 +13,10 @@ from src.ui.git_sync import build_git_sync_tab
 
 def build_app():
     """Build the main Gradio application"""
-    with gr.Blocks(title="ACM Compass - 题目与比赛追踪", theme=gr.themes.Soft()) as app:
+    with gr.Blocks(
+        title="ACM Compass - 题目与比赛追踪",
+        theme=gr.themes.Soft()
+    ) as app:
         gr.Markdown("# 🧭 ACM Compass - 题目与比赛追踪系统")
         gr.Markdown("本地多人协作的 ACM 题目与比赛管理工具")
 

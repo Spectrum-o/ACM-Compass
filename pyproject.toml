@@ -9,4 +9,5 @@ dependencies = [
     "pydantic>=2.11.10",
     "markdown>=3.7",
     "pandas>=2.2.3",
+    "pymdown-extensions>=10.12",
 ]

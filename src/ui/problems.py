@@ -4,7 +4,6 @@ Handles the problem management tabs (All/Unsolved/Solved)
 """
 import gradio as gr
 import pandas as pd
-import markdown
 from typing import List, Optional
 
 from ..data_manager import (
@@ -161,22 +160,12 @@ def clear_form_handler():
 
 
 def preview_solution_handler(solution_md: str) -> str:
-    """Preview solution markdown"""
+    """Preview solution markdown with LaTeX support"""
     if not solution_md or not solution_md.strip():
-        return "<p style='color: gray;'>暂无题解内容</p>"
+        return "*暂无题解内容*"
 
-    # Convert markdown to HTML
-    html = markdown.markdown(
-        solution_md,
-        extensions=['fenced_code', 'tables', 'codehilite']
-    )
-
-    # Wrap in a styled container
-    return f"""
-    <div style="padding: 20px; background: white; border-radius: 8px; border: 1px solid #ddd;">
-        {html}
-    </div>
-    """
+    # Return markdown directly - Gradio will handle rendering
+    return solution_md
 
 
 def build_problem_tab(title: str, emoji: str, filter_mode: str):
@@ -226,8 +215,13 @@ def build_problem_tab(title: str, emoji: str, filter_mode: str):
 
         notes_input = gr.Textbox(label="备注", placeholder="记录思路、坑点等", lines=3)
 
-        gr.Markdown("### 题解（Markdown 支持）")
-        solution_md_input = gr.Textbox(label="题解内容", placeholder="支持 Markdown 格式...", lines=8)
+        gr.Markdown("### 题解（Markdown + LaTeX 支持）")
+        gr.Markdown("💡 行内公式：`$公式$`  |  块级公式：`$$公式$$`")
+        solution_md_input = gr.Textbox(
+            label="题解内容",
+            placeholder="支持 Markdown 和 LaTeX 公式\n例如：\n行内公式 $E=mc^2$ 和 $O(n\\log n)$\n\n块级公式：\n$$\n\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n$$",
+            lines=10
+        )
 
         with gr.Row():
             preview_btn = gr.Button("👁️ 预览题解", variant="secondary")
@@ -237,7 +231,10 @@ def build_problem_tab(title: str, emoji: str, filter_mode: str):
         status_msg = gr.Markdown("")
 
         with gr.Accordion("题解预览", open=False):
-            solution_preview = gr.HTML()
+            solution_preview = gr.Markdown(latex_delimiters=[
+                {"left": "$", "right": "$", "display": False},
+                {"left": "$$", "right": "$$", "display": True}
+            ])
 
         # Event handlers
         refresh_btn.click(
