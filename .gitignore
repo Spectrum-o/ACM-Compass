@@ -24,3 +24,5 @@ Thumbs.db
 *.bak.json
 *.backup.json
 *.log
+*.backup
+*.backup/

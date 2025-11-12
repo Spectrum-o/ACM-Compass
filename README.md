@@ -2,82 +2,76 @@
 # ACM 题目与比赛追踪（本地多人共用）
 
 本项目提供一个开箱即用的本地 Web 工具：
-- 前端（纯 HTML/JS/CSS）直接在浏览器里管理题目与比赛；
-- 后端（FastAPI）托管静态页面并把数据落到 `data/*.json`；
-- 用 Git 同步数据文件，天然支持多人协作与历史回溯。
+- **Gradio Web界面** - 纯Python实现的交互式Web UI
+- **数据存储** - 数据保存在 `data/*.json` 文件中
+- **Git 同步** - 天然支持多人协作与历史回溯
 
 ## 功能亮点
-- 题目管理三视图：全部（All）/ 未解决（Unsolved）/ 已解决（Solved）。
-- 题解面板：Markdown + LaTeX 支持，内置代码高亮与题解预览。
-- 比赛面板（Contests）：A..M 卡片式记录各题通过/尝试人数与本队状态（AC/attempted/unsubmitted），支持赛后总结与排名。
-- 一键 Git 同步：网页内填写提交说明并推送（需本地已配置 Git 仓库与远程）。
-- 纯文件存储：`data/problems.json` 与 `data/contests.json`，轻量、可读、易合并。
-- 零外部依赖：无需数据库；后端同时托管前端，无需额外静态服务器。
-- 跨平台一键启动脚本（Windows/macOS/Linux）。
+
+- **题目管理三视图**：全部（All）/ 未解决（Unsolved）/ 已解决（Solved）
+- **题解支持**：Markdown 格式题解编辑与预览
+- **比赛管理**：A..O 卡片式记录各题通过/尝试人数与本队状态（AC/attempted/unsubmitted），支持赛后总结与排名
+- **一键 Git 同步**：网页内填写提交说明并推送（需本地已配置 Git 仓库与远程）
+- **纯文件存储**：`data/problems.json` 与 `data/contests.json`，轻量、可读、易合并
+- **零外部依赖**：无需数据库；单个 Python 文件即可运行
+- **跨平台支持**：Windows/macOS/Linux
 
 ## 快速开始
 
-### 1) 安装依赖（需 Python 3.9+）
+### 1) 安装依赖（需 Python 3.13+）
+
 ```bash
-cd acm-tracker
-python -m venv .venv
-# macOS/Linux:
-. .venv/bin/activate && pip install -r requirements.txt
-# Windows CMD/PowerShell:
-.venv\Scripts\pip install -r requirements.txt
+# 使用 uv（推荐）
+uv sync
+
+# 或使用 pip
+pip install gradio pydantic markdown pandas
 ```
 
-### 2) 启动服务（默认 http://127.0.0.1:8000/）
+### 2) 启动服务（默认 http://127.0.0.1:7860/）
+
 ```bash
-# macOS/Linux:
-uvicorn server:app --reload --port 8000
-# 或直接：python server.py
+# 方式一：直接运行
+python server.py
 
-# Windows:
-.venv\Scripts\uvicorn server:app --reload --port 8000
-# 或：.venv\Scripts\python server.py
+# 方式二：使用 uv
+uv run python server.py
 ```
-打开浏览器访问 `http://127.0.0.1:8000/` 即可。
 
-> 提示：后端已托管前端静态资源，无需另起本地静态服务器。
+打开浏览器访问 `http://127.0.0.1:7860/` 即可。
 
-### 3) 一键启动（推荐）
-- Windows(CMD)：双击 `quickstart.bat`
-- Windows(PowerShell)：右键 `quickstart.ps1` → 以 PowerShell 运行
-- macOS/Linux/WSL：在项目根目录运行 `./quickstart.sh`
-- 更短命令：`./run`（若提示权限不足，可用 `bash run`）
+## 界面导航
 
-脚本会自动：创建虚拟环境 → 安装依赖 → 打开浏览器 → 启动本地服务。
+**5个主要标签页：**
 
-想要更短：添加一个别名（任选其一）
-- bash：`echo "alias acm='bash ~/program/2025-Autumn/acm-tracker/run'" >> ~/.bashrc && source ~/.bashrc`
-- zsh：`echo "alias acm='bash ~/program/2025-Autumn/acm-tracker/run'" >> ~/.zshrc && source ~/.zshrc`
-之后直接输入 `acm` 即可启动。
-
-## 页面导航
-- 全部题目：`/index.html`
-- 未解决：`/unsolved.html`（未看题 / 已看题无思路 / 知道做法未实现）
-- 已解决：`/solved.html`
-- 比赛面板：`/contests.html`
+1. **📚 全部题目** - 查看和管理所有题目
+2. **⚠️ 未解决** - 专注于未解决的题目
+3. **✅ 已解决** - 查看已完成的题目
+4. **🏆 比赛管理** - 记录比赛信息和题目统计
+5. **🔄 Git 同步** - 拉取/推送数据到远程仓库
 
 ## 数据文件
-- `data/problems.json`：题目清单（浏览器表单保存时自动更新）。
-- `data/solutions/*.md`：每道题的题解 Markdown 文件，文件名为题目 `id`.md。
-- `data/contests.json`：比赛记录（包含各题统计与状态、排名、赛后总结）。
+
+- `data/problems.json`：题目清单
+- `data/solutions/*.md`：每道题的题解 Markdown 文件，文件名为题目 `id`.md
+- `data/contests.json`：比赛记录（包含各题统计与状态、排名、赛后总结）
 
 把项目放入 Git 仓库，日常流程建议：
-1) 开始前 `git pull`；2) 页面中增删改并保存；3) 提交并推送（见下文“一键 Git 同步”）；4) 结束后 `git push`。
+1. 开始前在 "Git 同步" 标签页点击"拉取远程更新"
+2. 在界面中增删改题目/比赛并保存
+3. 在 "Git 同步" 标签页填写提交说明并点击"推送到远程"
 
-## 一键 Git 同步（网页内）
-在「All Problems」「Unsolved」「Solved」「Contests」页面顶部的“Git 同步”区域：
-- 点击“获取远程更新”触发 `git pull origin main`（成功后页面数据会自动刷新）。
-- 填写提交说明后点击“上传到 GitHub”，按钮会先自动执行 `git pull origin main`，随后执行等价于：
+## Git 同步（网页内）
+
+在「Git 同步」标签页：
+- 点击"拉取远程更新"触发 `git pull origin main`
+- 填写提交说明后点击"推送到远程"，会执行：
   - `git add -A` → `git commit -m "..."` → `git push`
-- 若第一次推送且未设置上游分支，会尝试 `git push -u origin <当前分支>`。
+- 操作日志会实时显示在界面中
 
-若出现报错如“not_a_git_repo / no_changes / push 失败”，按提示在项目根目录完成 `git init`、`git remote add origin ...` 等配置，或确认确实有暂存的变更。
+若出现报错如"not_a_git_repo / no_changes / push 失败"，按提示在项目根目录完成 `git init`、`git remote add origin ...` 等配置。
 
-## 数据模型（与后端保持一致）
+## 数据模型
 
 ### Problem
 字段：
@@ -91,21 +85,15 @@ uvicorn server:app --reload --port 8000
 - `unsolved_custom_label: str | null` 自定义的未解决补充标签（仅在未解决时保留）
 - `pass_count: int | null` 场上通过人数（越多越简单）
 - `notes: str | null` 备注
-- `has_solution: bool` 是否已有题解文件（由服务端根据 `data/solutions/{id}.md` 推断，只读）
+- `has_solution: bool` 是否已有题解文件（由程序根据 `data/solutions/{id}.md` 推断，只读）
 - 系统字段：`id: str`, `created_at: ISO8601`, `updated_at: ISO8601`
 
 兼容性：历史数据中的 `status == "Done"` 会映射为 `solved = true`；旧字段 `owner` 已移除。
 
 ### 题解 Solution
-- 每个题目可选配套 `data/solutions/{problem_id}.md` 文件，内容为 Markdown（含 LaTeX 公式、代码块）。
-- Web 端在编辑题目时可直接录入题解，保存时后端会写入对应 `.md` 文件；为空时会删除文件。
-- 导出 (`GET /api/export`) 时会自动把题解以 `solution_markdown` 字段附带在 JSON 中，导入时同名字段会被迁移成独立 Markdown 文件。
-
-#### 使用方法
-1. 打开任意题目页面（All/Unsolved/Solved），选中或新建题目，在表单底部的 **题解（Markdown + LaTeX）** 区域编写内容。
-2. 点击「预览题解」可在弹窗中查看渲染效果（支持公式、代码高亮）。
-3. 表单「保存」后，题解会写入 `data/solutions/<题目 id>.md`，并在列表中显示「题解」按钮；点击可随时查看。
-4. 重新编辑想清空题解时，将文本框置空再保存即可删除对应的 `.md` 文件。
+- 每个题目可选配套 `data/solutions/{problem_id}.md` 文件，内容为 Markdown
+- Web 端在编辑题目时可直接录入题解，保存时会写入对应 `.md` 文件；为空时会删除文件
+- 点击"预览题解"可查看渲染效果
 
 ### Contest
 字段：
@@ -116,66 +104,70 @@ uvicorn server:app --reload --port 8000
 - `summary: string | null` 赛后总结
 - 系统字段：`id: str`, `created_at: ISO8601`, `updated_at: ISO8601`
 
-## REST API（供前端使用）
+## 使用技巧
 
-题目 Problem：
-- `GET /api/problems` → `Problem[]`
-- `POST /api/problems` → 创建，入参 `ProblemIn`
-- `PUT /api/problems/{id}` → 更新，入参 `ProblemIn`
-- `DELETE /api/problems/{id}` → 删除
-- `GET /api/problems/{id}/solution` → `{ id, markdown, has_solution, updated_at }`
-- `PUT /api/problems/{id}/solution` → 上传/更新题解，入参 `{ markdown: string }`（空字符串会删除题解）
-- `DELETE /api/problems/{id}/solution` → 删除题解文件
-- `GET /api/export` → 导出 `Problem[]`
-- `POST /api/import` → 用 `Problem[]` 整体替换（自动备份原文件）
+### 快速编辑
+1. 在表格中点击题目/比赛的 **ID** 列，数据会自动加载到编辑表单
+2. 修改后点击"保存"按钮
+3. 表格会自动刷新
 
-比赛 Contest：
-- `GET /api/contests` → `Contest[]`
-- `GET /api/contests/{id}` → `Contest`
-- `POST /api/contests` → 创建，入参 `ContestIn`
-- `PUT /api/contests/{id}` → 更新，入参 `ContestIn`
-- `DELETE /api/contests/{id}` → 删除
+### 题解编辑
+1. 在题目表单底部有"题解内容"文本框
+2. 支持 Markdown 语法，可以使用代码块、表格等
+3. 点击"预览题解"查看渲染效果
+4. 保存题目时会自动保存题解到 `data/solutions/{id}.md`
 
-Git 同步（网页按钮调用）：
-- `POST /api/git/push`，入参：
-  ```json
-  { "message": "update problems", "files": ["data/problems.json"], "add_all": false }
-  ```
-  若未提供 `files` 或 `add_all=true`，等同于 `git add -A`。
+### 比赛管理
+1. 设置"题目数量"后，下方会显示对应数量的题目输入框（A-O）
+2. 为每道题填写通过人数、尝试人数和本队状态
+3. 在"赛后总结"中记录比赛反思和经验
 
 ## 目录结构
+
 ```
-acm-tracker/
-├─ server.py             # FastAPI 后端（同时托管前端）
-├─ requirements.txt      # 依赖
+acm-compass/
+├─ server.py             # Gradio 应用主文件
+├─ pyproject.toml        # 项目依赖配置
+├─ uv.lock              # 依赖锁定文件
 ├─ data/
 │  ├─ problems.json      # 题目数据
-│  └─ contests.json      # 比赛数据
-└─ frontend/
-   ├─ index.html         # 全部题目
-   ├─ unsolved.html      # 未解决
-   ├─ solved.html        # 已解决
-   ├─ contests.html      # 比赛面板
-   ├─ app.js             # 题目相关前端逻辑
-   ├─ contests.js        # 比赛相关前端逻辑
-   └─ style.css          # 统一样式
+│  ├─ contests.json      # 比赛数据
+│  └─ solutions/         # 题解 Markdown 文件
+│     └─ {problem_id}.md
+└─ [quickstart scripts]  # 快速启动脚本（可选）
 ```
 
 ## 常见问题（FAQ）
-- 我可以自定义字段吗？
-  - 可以。保持前端提交的结构与后端 `ProblemIn/ContestIn` 模型一致即可。新增字段建议从前端表单开始接入，并在后端模型与 `normalize_*` 中补默认值。
-- 怎么导入旧清单？
-  - 将旧数据整理为与 `Problem` 兼容的数组，调用 `/api/import` 即可整体替换（原文件会自动备份到 `.bak.json`）。
-- 为什么不用数据库？
-  - 小团队 + Git 同步场景下，JSON 文件足够轻量、可读、易合并；未来如需扩展，迁移到 SQLite/PostgreSQL 也很容易。
-- 端口/路径怎么改？
-  - 运行时修改 `uvicorn` 的 `--port` 即可；静态目录为 `frontend/`，数据目录为 `data/`，可在 `server.py` 顶部常量处调整。
-- Git 推送失败怎么办？
-  - 确认项目根目录已 `git init` 并配置远程（`git remote -v`）；首次推送可能需要设置上游分支；或检查是否确有暂存更改。
-- 题解渲染需要联网吗？
-  - 默认从 jsDelivr 加载 `markdown-it`、`MathJax`、`highlight.js`，离线环境可改为本地托管（替换 HTML 中的 CDN 链接即可）。
 
-## 备选方案：纯前端 + File System Access API（可选）
-- 在 `https://` 或 `http://localhost` 环境下，Chrome/Edge 可让网页直接读写本地 JSON；
-- 仍可配合 Git 同步，但 Safari/Firefox 支持较差，且需要用户授权选择文件；
-- 本仓库默认方案更稳健：由后端负责写盘，前端专注交互。
+**Q: 可以自定义字段吗？**
+A: 可以。修改 `server.py` 中的 Pydantic 模型（`ProblemIn`/`ContestIn`）并在 UI 中添加对应的输入组件即可。
+
+**Q: 怎么导入旧数据？**
+A: 直接编辑 `data/problems.json` 或 `data/contests.json` 文件，确保格式与现有数据一致。程序会自动进行兼容性处理。
+
+**Q: 为什么不用数据库？**
+A: 小团队 + Git 同步场景下，JSON 文件足够轻量、可读、易合并；未来如需扩展，迁移到 SQLite/PostgreSQL 也很容易。
+
+**Q: 端口怎么改？**
+A: 修改 `server.py` 最后的 `app.launch()` 中的 `server_port` 参数。
+
+**Q: Git 推送失败怎么办？**
+A: 确认项目根目录已 `git init` 并配置远程（`git remote -v`）；首次推送可能需要设置上游分支；或检查是否确有暂存更改。
+
+## 技术栈
+
+- **框架**: Gradio 5.49+
+- **数据验证**: Pydantic 2.11+
+- **Markdown 渲染**: markdown 3.7+
+- **数据展示**: pandas 2.2+
+- **版本控制**: Git（通过 subprocess 调用）
+
+## 与旧版本的区别
+
+本项目已从 FastAPI + HTML/JS 前端重构为纯 Gradio 应用：
+- ✅ 数据格式 100% 兼容
+- ✅ 所有功能保留（CRUD、筛选、Git 同步、题解编辑）
+- ✅ 更易维护（单个 Python 文件）
+- ✅ 自动生成 UI（无需手写 HTML/JS/CSS）
+
+备份文件：`server.py.backup`（旧版 FastAPI）、`frontend.backup/`（旧版前端）

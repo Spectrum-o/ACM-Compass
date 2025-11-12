@@ -1,0 +1,12 @@
+[project]
+name = "acm-compass"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "gradio>=5.49.1",
+    "pydantic>=2.11.10",
+    "markdown>=3.7",
+    "pandas>=2.2.3",
+]
