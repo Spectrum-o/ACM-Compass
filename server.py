@@ -5,10 +5,37 @@ A local web-based tool for managing competitive programming problems and contest
 Built with Gradio for interactive UI and Python event handlers.
 """
 import gradio as gr
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.ui.problems import build_problem_tab
-from src.ui.contests import build_contest_tab
+from src.ui.contests import build_contest_tab, import_contest_from_browser, set_pending_import
 from src.ui.git_sync import build_git_sync_tab
+
+
+# Create FastAPI app with CORS
+fastapi_app = FastAPI()
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Direct API endpoint for bookmarklet
+@fastapi_app.post("/api/import_contest")
+async def api_import_contest(request: Request):
+    """API endpoint for browser bookmarklet to send contest data"""
+    data = await request.json()
+    # Gradio sends data in {"data": [...]} format
+    if "data" in data and len(data["data"]) > 0:
+        contest_data = data["data"][0]
+    else:
+        contest_data = data
+    result = import_contest_from_browser(contest_data)
+    return {"data": [result]}
 
 
 def build_app():
@@ -34,6 +61,7 @@ def build_app():
 
         gr.Markdown("---")
         gr.Markdown("💾 数据存储：`data/problems.json` | `data/contests.json` | `data/solutions/*.md`")
+        gr.Markdown("📖 浏览器助手：打开 `bookmarklet.html` 获取浏览器导入工具")
 
     return app
 
@@ -41,11 +69,15 @@ def build_app():
 def main():
     """Main entry point"""
     app = build_app()
-    app.launch(
-        server_name="127.0.0.1",
-        server_port=7860,
-        share=False,
-        show_error=True
+
+    # Mount Gradio app to FastAPI with CORS support
+    gr.mount_gradio_app(fastapi_app, app, path="/")
+
+    import uvicorn
+    uvicorn.run(
+        fastapi_app,
+        host="127.0.0.1",
+        port=7860
     )
 
 

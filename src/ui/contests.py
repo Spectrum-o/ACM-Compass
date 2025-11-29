@@ -4,12 +4,71 @@ Handles the contest management tab
 """
 import gradio as gr
 import pandas as pd
-from typing import List
+from typing import List, Dict, Any, Optional
 
 from ..data_manager import (
     load_contests, create_contest, update_contest, delete_contest
 )
 from ..models import LETTERS
+
+
+# Temporary storage for imported contest data
+_pending_import: Optional[Dict[str, Any]] = None
+
+
+def set_pending_import(data: Dict[str, Any]):
+    """Store imported data for later retrieval"""
+    global _pending_import
+    _pending_import = data
+
+
+def get_and_clear_pending_import() -> Optional[Dict[str, Any]]:
+    """Get and clear pending import data"""
+    global _pending_import
+    data = _pending_import
+    _pending_import = None
+    return data
+
+
+def import_contest_from_browser(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Process contest data sent from browser bookmarklet
+    Returns form data to auto-fill the UI
+
+    Args:
+        data: Contest data extracted by bookmarklet
+
+    Returns:
+        Form data for UI auto-fill
+    """
+    try:
+        # Validate required fields
+        if not data.get('name'):
+            return {"success": False, "message": "缺少比赛名称"}
+
+        if not data.get('problems'):
+            return {"success": False, "message": "缺少题目数据"}
+
+        # Store for pending import
+        set_pending_import(data)
+
+        # Prepare form data
+        form_data = {
+            "success": True,
+            "message": f"✓ 已提取比赛数据: {data['name']}，请检查后点击保存",
+            "contest_name": data['name'],
+            "total_problems": data.get('total_problems', len(data['problems'])),
+            "rank_str": data.get('user_rank', ''),
+            "problems": data['problems']
+        }
+
+        return form_data
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"✗ 数据处理失败: {str(e)}"
+        }
 
 
 def contests_to_dataframe(items: List[dict]) -> pd.DataFrame:
@@ -102,8 +161,9 @@ def delete_contest_handler(contest_id: str):
 
 def select_contest_handler(evt: gr.SelectData):
     """Handle contest table row selection"""
+    # Order: 5 basic + 78 problem_inputs + 26 problem_rows + 1 title + 1 status = 111
     if evt.index[1] != 0:  # If not clicking on ID column
-        return [gr.update()] * (5 + 26 * 4 + 1)  # 5 basic fields + 26 problems * 4 fields each + 1 title
+        return [gr.update()] * 111
 
     contest_id = evt.value
     items = load_contests()
@@ -114,6 +174,7 @@ def select_contest_handler(evt: gr.SelectData):
             end_letter = LETTERS[total_problems - 1]
             title = f"### 题目统计 (A-{end_letter})"
 
+            # 5 basic fields
             updates = [
                 gr.update(value=contest_id),
                 gr.update(value=it.get('name', '')),
@@ -122,7 +183,7 @@ def select_contest_handler(evt: gr.SelectData):
                 gr.update(value=it.get('summary', ''))
             ]
 
-            # Update problem fields and row visibility
+            # 78 problem_inputs (26 × 3)
             problems = it.get('problems', [])
             for i in range(26):
                 if i < len(problems):
@@ -131,30 +192,110 @@ def select_contest_handler(evt: gr.SelectData):
                         gr.update(value=p.get('pass_count', 0)),
                         gr.update(value=p.get('attempt_count', 0)),
                         gr.update(value=p.get('my_status', 'unsubmitted')),
-                        gr.update(visible=i < total_problems)  # Row visibility
                     ])
                 else:
                     updates.extend([
                         gr.update(value=0),
                         gr.update(value=0),
                         gr.update(value='unsubmitted'),
-                        gr.update(visible=i < total_problems)  # Row visibility
                     ])
 
-            # Add title update at the end
+            # 26 problem_rows (visibility)
+            for i in range(26):
+                updates.append(gr.update(visible=i < total_problems))
+
+            # Title
             updates.append(title)
+            # Status message
+            updates.append(f"已加载比赛: {it.get('name', '')}")
             return updates
 
-    return [gr.update()] * (5 + 26 * 4 + 1)
+    return [gr.update()] * 111
 
 
 def clear_contest_handler():
     """Clear the contest form"""
+    # 5 basic fields
     updates = ["", "", 12, "", ""]
+    # 78 problem_inputs (26 × 3)
     for i in range(26):
-        updates.extend([0, 0, "unsubmitted", gr.update(visible=i < 12)])  # Show first 12 rows by default
-    # Add default title for 12 problems
+        updates.extend([0, 0, "unsubmitted"])
+    # 26 problem_rows (visibility)
+    for i in range(26):
+        updates.append(gr.update(visible=i < 12))
+    # Title
     updates.append("### 题目统计 (A-L)")
+    # Status message
+    updates.append("")
+    return updates
+
+
+def load_pending_import_handler():
+    """Load pending import data into the form"""
+    data = get_and_clear_pending_import()
+    if not data:
+        # No pending data, return no updates
+        # Order: 5 basic + 78 problem_inputs + 26 problem_rows + 1 title + 1 status = 111
+        return [gr.update()] * 111
+
+    total_problems = data.get('total_problems', len(data.get('problems', [])))
+    total_problems = max(1, min(26, int(total_problems)))
+    end_letter = LETTERS[total_problems - 1]
+    title = f"### 题目统计 (A-{end_letter})"
+
+    # Convert rank to string, handle None
+    rank_str = data.get('user_rank', '') or ''
+    if rank_str and not isinstance(rank_str, str):
+        rank_str = str(rank_str)
+
+    # 5 basic fields
+    updates = [
+        gr.update(value=""),  # contest_id (new contest)
+        gr.update(value=data.get('name', '')),
+        gr.update(value=int(total_problems)),
+        gr.update(value=rank_str),
+        gr.update(value='')  # summary
+    ]
+
+    # 78 problem_inputs (26 problems × 3 fields each: pass, attempt, status)
+    problems = data.get('problems', [])
+    for i in range(26):
+        if i < len(problems):
+            p = problems[i]
+            # Ensure pass_count and attempt_count are integers
+            pass_count = p.get('pass_count', 0)
+            attempt_count = p.get('attempt_count', 0)
+            if isinstance(pass_count, str):
+                pass_count = int(pass_count) if pass_count.isdigit() else 0
+            if isinstance(attempt_count, str):
+                attempt_count = int(attempt_count) if attempt_count.isdigit() else 0
+
+            # Ensure my_status is a valid choice
+            my_status = p.get('my_status', 'unsubmitted')
+            if my_status not in ['unsubmitted', 'attempted', 'ac']:
+                my_status = 'unsubmitted'
+
+            updates.extend([
+                gr.update(value=int(pass_count)),
+                gr.update(value=int(attempt_count)),
+                gr.update(value=my_status),
+            ])
+        else:
+            updates.extend([
+                gr.update(value=0),
+                gr.update(value=0),
+                gr.update(value='unsubmitted'),
+            ])
+
+    # 26 problem_rows (visibility)
+    for i in range(26):
+        updates.append(gr.update(visible=i < total_problems))
+
+    # Add title
+    updates.append(title)
+    # Add status message
+    updates.append(f"✓ 已导入比赛数据: {data.get('name', '')}，请检查后点击保存")
+
     return updates
 
 
@@ -176,7 +317,15 @@ def update_problem_rows_visibility(total_problems: int):
 
 def build_contest_tab():
     """Build the contest management tab"""
-    with gr.Tab("🏆 比赛管理"):
+    with gr.Tab("🏆 比赛管理") as contest_tab:
+        gr.Markdown("### 使用浏览器书签导入比赛数据")
+        gr.Markdown("💡 打开 `bookmarklet.html` 获取浏览器书签工具，在 qoj.ac/ucup.ac 的 standings 页面点击即可导入")
+
+        with gr.Row():
+            load_import_btn = gr.Button("📥 加载导入的数据", variant="primary", size="sm")
+
+        gr.Markdown("---")  # Separator
+
         with gr.Row():
             gr.Markdown("### 比赛列表")
 
@@ -239,7 +388,13 @@ def build_contest_tab():
 
         # Combine all inputs and outputs (including problem rows for visibility control)
         all_contest_inputs = [contest_id, contest_name, contest_total_problems, contest_rank, contest_summary] + problem_inputs
-        all_contest_outputs = all_contest_inputs + problem_rows + [problem_stats_title]
+        all_contest_outputs = all_contest_inputs + problem_rows + [problem_stats_title, contest_status]
+
+        # Load imported data button
+        load_import_btn.click(
+            fn=load_pending_import_handler,
+            outputs=all_contest_outputs
+        )
 
         # Dynamic visibility control for problem rows and title
         contest_total_problems.change(
