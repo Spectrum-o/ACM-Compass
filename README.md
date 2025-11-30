@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./docs/banner.svg" alt="ACM-Compass" width="800">
+<img src="./docs/banner.png" alt="ACM-Compass">
 
 **🧭 题目与比赛追踪系统 | Problem & Contest Tracker**
 
