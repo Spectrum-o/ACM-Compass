@@ -4,12 +4,55 @@ Handles the problem management tabs (All/Unsolved/Solved)
 """
 import gradio as gr
 import pandas as pd
+from datetime import datetime
 from typing import List, Optional
 
 from ..data_manager import (
     load_problems, read_solution, write_solution, delete_solution,
     create_problem, update_problem, delete_problem
 )
+
+
+def filter_by_date_range(items: List[dict], start_date: Optional[str], end_date: Optional[str]) -> List[dict]:
+    """Filter items by date range based on created_at field"""
+    if not start_date and not end_date:
+        return items
+
+    filtered = []
+    for it in items:
+        created_at = it.get('created_at', '')
+        if not created_at:
+            continue
+
+        try:
+            # Parse ISO8601 date (e.g., "2024-01-15T10:30:00")
+            item_date = datetime.fromisoformat(created_at.replace('Z', '+00:00')).date()
+        except (ValueError, TypeError):
+            continue
+
+        # Check start date (gr.DateTime returns "YYYY-MM-DD HH:MM:SS" or date string)
+        if start_date:
+            try:
+                start_str = str(start_date).split()[0]  # Get date part only
+                start = datetime.strptime(start_str, "%Y-%m-%d").date()
+                if item_date < start:
+                    continue
+            except (ValueError, IndexError):
+                pass
+
+        # Check end date
+        if end_date:
+            try:
+                end_str = str(end_date).split()[0]  # Get date part only
+                end = datetime.strptime(end_str, "%Y-%m-%d").date()
+                if item_date > end:
+                    continue
+            except (ValueError, IndexError):
+                pass
+
+        filtered.append(it)
+
+    return filtered
 
 
 def problems_to_dataframe(items: List[dict], filter_mode: str = "all") -> pd.DataFrame:
@@ -42,9 +85,10 @@ def problems_to_dataframe(items: List[dict], filter_mode: str = "all") -> pd.Dat
     return pd.DataFrame(rows)
 
 
-def load_problems_ui(filter_mode: str = "all"):
-    """Load and display problems"""
+def load_problems_ui(filter_mode: str = "all", start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """Load and display problems with optional date filtering"""
     items = load_problems()
+    items = filter_by_date_range(items, start_date, end_date)
     df = problems_to_dataframe(items, filter_mode)
     return df
 
@@ -62,11 +106,13 @@ def save_problem_handler(
     pass_count: Optional[int],
     notes: str,
     solution_md: str,
-    filter_mode: str
+    filter_mode: str,
+    start_date: Optional[str],
+    end_date: Optional[str]
 ):
     """Save or update a problem"""
     if not title or not title.strip():
-        return "❌ 标题不能为空！", load_problems_ui(filter_mode)
+        return "❌ 标题不能为空！", load_problems_ui(filter_mode, start_date, end_date)
 
     # Parse tags
     tag_list = [t.strip() for t in tags.split(',') if t.strip()] if tags else []
@@ -89,7 +135,7 @@ def save_problem_handler(
         # Update existing
         result = update_problem(problem_id, data)
         if not result:
-            return "❌ 未找到该题目！", load_problems_ui(filter_mode)
+            return "❌ 未找到该题目！", load_problems_ui(filter_mode, start_date, end_date)
 
         # Handle solution
         if solution_md and solution_md.strip():
@@ -109,19 +155,19 @@ def save_problem_handler(
 
         msg = f"✓ 已添加题目: {title}"
 
-    return msg, load_problems_ui(filter_mode)
+    return msg, load_problems_ui(filter_mode, start_date, end_date)
 
 
-def delete_problem_handler(problem_id: str, filter_mode: str):
+def delete_problem_handler(problem_id: str, filter_mode: str, start_date: Optional[str], end_date: Optional[str]):
     """Delete a problem"""
     if not problem_id or not problem_id.strip():
-        return "❌ 请先选择要删除的题目！", load_problems_ui(filter_mode)
+        return "❌ 请先选择要删除的题目！", load_problems_ui(filter_mode, start_date, end_date)
 
     success = delete_problem(problem_id)
     if not success:
-        return "❌ 未找到该题目！", load_problems_ui(filter_mode)
+        return "❌ 未找到该题目！", load_problems_ui(filter_mode, start_date, end_date)
 
-    return "✓ 已删除题目", load_problems_ui(filter_mode)
+    return "✓ 已删除题目", load_problems_ui(filter_mode, start_date, end_date)
 
 
 def select_problem_handler(evt: gr.SelectData):
@@ -176,8 +222,15 @@ def build_problem_tab(title: str, emoji: str, filter_mode: str):
 
         filter_state = gr.State(filter_mode)
 
-        with gr.Row():
-            refresh_btn = gr.Button("🔄 刷新列表", size="sm")
+        with gr.Row(equal_height=True):
+            start_date = gr.DateTime(label="开始日期", include_time=False, scale=1)
+            end_date = gr.DateTime(label="结束日期", include_time=False, scale=1)
+            with gr.Column(scale=1):
+                gr.Markdown("")  # Spacer to align with labels
+                filter_date_btn = gr.Button("📅 按日期筛选")
+            with gr.Column(scale=1):
+                gr.Markdown("")  # Spacer to align with labels
+                refresh_btn = gr.Button("🔄 刷新列表")
 
         problems_table = gr.Dataframe(
             value=load_problems_ui(filter_mode),
@@ -237,8 +290,15 @@ def build_problem_tab(title: str, emoji: str, filter_mode: str):
             ])
 
         # Event handlers
+        filter_date_btn.click(
+            fn=load_problems_ui,
+            inputs=[filter_state, start_date, end_date],
+            outputs=problems_table
+        )
+
         refresh_btn.click(
-            fn=lambda: load_problems_ui(filter_mode),
+            fn=load_problems_ui,
+            inputs=[filter_state, start_date, end_date],
             outputs=problems_table
         )
 
@@ -266,12 +326,12 @@ def build_problem_tab(title: str, emoji: str, filter_mode: str):
             fn=save_problem_handler,
             inputs=[problem_id, title_input, link_input, source_input, tags_input, assignee_input,
                    solved_input, unsolved_stage_input, unsolved_custom_label_input, pass_count_input,
-                   notes_input, solution_md_input, filter_state],
+                   notes_input, solution_md_input, filter_state, start_date, end_date],
             outputs=[status_msg, problems_table]
         )
 
         delete_btn.click(
             fn=delete_problem_handler,
-            inputs=[problem_id, filter_state],
+            inputs=[problem_id, filter_state, start_date, end_date],
             outputs=[status_msg, problems_table]
         )

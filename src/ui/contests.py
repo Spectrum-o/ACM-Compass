@@ -4,6 +4,7 @@ Handles the contest management tab
 """
 import gradio as gr
 import pandas as pd
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 from ..data_manager import (
@@ -14,6 +15,48 @@ from ..models import LETTERS
 
 # Temporary storage for imported contest data
 _pending_import: Optional[Dict[str, Any]] = None
+
+
+def filter_by_date_range(items: List[dict], start_date: Optional[str], end_date: Optional[str]) -> List[dict]:
+    """Filter items by date range based on created_at field"""
+    if not start_date and not end_date:
+        return items
+
+    filtered = []
+    for it in items:
+        created_at = it.get('created_at', '')
+        if not created_at:
+            continue
+
+        try:
+            # Parse ISO8601 date (e.g., "2024-01-15T10:30:00")
+            item_date = datetime.fromisoformat(created_at.replace('Z', '+00:00')).date()
+        except (ValueError, TypeError):
+            continue
+
+        # Check start date (gr.DateTime returns "YYYY-MM-DD HH:MM:SS" or date string)
+        if start_date:
+            try:
+                start_str = str(start_date).split()[0]  # Get date part only
+                start = datetime.strptime(start_str, "%Y-%m-%d").date()
+                if item_date < start:
+                    continue
+            except (ValueError, IndexError):
+                pass
+
+        # Check end date
+        if end_date:
+            try:
+                end_str = str(end_date).split()[0]  # Get date part only
+                end = datetime.strptime(end_str, "%Y-%m-%d").date()
+                if item_date > end:
+                    continue
+            except (ValueError, IndexError):
+                pass
+
+        filtered.append(it)
+
+    return filtered
 
 
 def set_pending_import(data: Dict[str, Any]):
@@ -92,9 +135,10 @@ def contests_to_dataframe(items: List[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def load_contests_ui():
-    """Load and display contests"""
+def load_contests_ui(start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """Load and display contests with optional date filtering"""
     items = load_contests()
+    items = filter_by_date_range(items, start_date, end_date)
     df = contests_to_dataframe(items)
     return df
 
@@ -105,11 +149,13 @@ def save_contest_handler(
     total_problems: int,
     rank_str: str,
     summary: str,
+    start_date: Optional[str],
+    end_date: Optional[str],
     *problem_data  # This will be pass/attempt/status for each problem
 ):
     """Save or update a contest"""
     if not name or not name.strip():
-        return "❌ 比赛名称不能为空！", load_contests_ui()
+        return "❌ 比赛名称不能为空！", load_contests_ui(start_date, end_date)
 
     total_problems = max(1, min(26, total_problems))
 
@@ -137,26 +183,26 @@ def save_contest_handler(
         # Update existing
         result = update_contest(contest_id, data)
         if not result:
-            return "❌ 未找到该比赛！", load_contests_ui()
+            return "❌ 未找到该比赛！", load_contests_ui(start_date, end_date)
         msg = f"✓ 已更新比赛: {name}"
     else:
         # Create new
         create_contest(data)
         msg = f"✓ 已添加比赛: {name}"
 
-    return msg, load_contests_ui()
+    return msg, load_contests_ui(start_date, end_date)
 
 
-def delete_contest_handler(contest_id: str):
+def delete_contest_handler(contest_id: str, start_date: Optional[str], end_date: Optional[str]):
     """Delete a contest"""
     if not contest_id or not contest_id.strip():
-        return "❌ 请先选择要删除的比赛！", load_contests_ui()
+        return "❌ 请先选择要删除的比赛！", load_contests_ui(start_date, end_date)
 
     success = delete_contest(contest_id)
     if not success:
-        return "❌ 未找到该比赛！", load_contests_ui()
+        return "❌ 未找到该比赛！", load_contests_ui(start_date, end_date)
 
-    return "✓ 已删除比赛", load_contests_ui()
+    return "✓ 已删除比赛", load_contests_ui(start_date, end_date)
 
 
 def select_contest_handler(evt: gr.SelectData):
@@ -329,8 +375,15 @@ def build_contest_tab():
         with gr.Row():
             gr.Markdown("### 比赛列表")
 
-        with gr.Row():
-            refresh_contests_btn = gr.Button("🔄 刷新列表", size="sm")
+        with gr.Row(equal_height=True):
+            start_date = gr.DateTime(label="开始日期", include_time=False, scale=1)
+            end_date = gr.DateTime(label="结束日期", include_time=False, scale=1)
+            with gr.Column(scale=1):
+                gr.Markdown("")  # Spacer to align with labels
+                filter_date_btn = gr.Button("📅 按日期筛选")
+            with gr.Column(scale=1):
+                gr.Markdown("")  # Spacer to align with labels
+                refresh_contests_btn = gr.Button("🔄 刷新列表")
 
         contests_table = gr.Dataframe(
             value=load_contests_ui(),
@@ -381,14 +434,21 @@ def build_contest_tab():
         contest_status = gr.Markdown("")
 
         # Event handlers
+        filter_date_btn.click(
+            fn=load_contests_ui,
+            inputs=[start_date, end_date],
+            outputs=contests_table
+        )
+
         refresh_contests_btn.click(
             fn=load_contests_ui,
+            inputs=[start_date, end_date],
             outputs=contests_table
         )
 
         # Combine all inputs and outputs (including problem rows for visibility control)
-        all_contest_inputs = [contest_id, contest_name, contest_total_problems, contest_rank, contest_summary] + problem_inputs
-        all_contest_outputs = all_contest_inputs + problem_rows + [problem_stats_title, contest_status]
+        all_contest_inputs = [contest_id, contest_name, contest_total_problems, contest_rank, contest_summary, start_date, end_date] + problem_inputs
+        all_contest_outputs = [contest_id, contest_name, contest_total_problems, contest_rank, contest_summary] + problem_inputs + problem_rows + [problem_stats_title, contest_status]
 
         # Load imported data button
         load_import_btn.click(
@@ -421,6 +481,6 @@ def build_contest_tab():
 
         delete_contest_btn.click(
             fn=delete_contest_handler,
-            inputs=contest_id,
+            inputs=[contest_id, start_date, end_date],
             outputs=[contest_status, contests_table]
         )
