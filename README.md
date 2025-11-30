@@ -1,13 +1,6 @@
 <div align="center">
 
-<pre>
-<span style="color: #00d7ff; font-weight: bold;">     █████╗  ██████╗███╗   ███╗       </span><span style="color: #ff87ff; font-weight: bold;"> ██████╗ ██████╗ ███╗   ███╗██████╗  █████╗ ███████╗███████╗</span>
-<span style="color: #00d7ff; font-weight: bold;">    ██╔══██╗██╔════╝████╗ ████║       </span><span style="color: #ff87ff; font-weight: bold;">██╔════╝██╔═══██╗████╗ ████║██╔══██╗██╔══██╗██╔════╝██╔════╝</span>
-<span style="color: #00d7ff; font-weight: bold;">    ███████║██║     ██╔████╔██║</span><span style="color: #ffff00; font-weight: bold;"> █████╗</span><span style="color: #ff87ff; font-weight: bold;">██║     ██║   ██║██╔████╔██║██████╔╝███████║███████╗███████╗</span>
-<span style="color: #00d7ff; font-weight: bold;">    ██╔══██║██║     ██║╚██╔╝██║</span><span style="color: #ffff00; font-weight: bold;"> ╚════╝</span><span style="color: #ff87ff; font-weight: bold;">██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██╔══██║╚════██║╚════██║</span>
-<span style="color: #00d7ff; font-weight: bold;">    ██║  ██║╚██████╗██║ ╚═╝ ██║       </span><span style="color: #ff87ff; font-weight: bold;">╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ██║  ██║███████║███████║</span>
-<span style="color: #00d7ff; font-weight: bold;">    ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝       </span><span style="color: #ff87ff; font-weight: bold;"> ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝</span>
-</pre>
+<img src="./docs/banner.svg" alt="ACM-Compass" width="800">
 
 **🧭 题目与比赛追踪系统 | Problem & Contest Tracker**
 

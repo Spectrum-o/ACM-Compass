@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 120">
+  <style>
+    .acm { fill: #00d7ff; font-family: monospace; font-size: 14px; font-weight: bold; }
+    .dash { fill: #ffff00; font-family: monospace; font-size: 14px; font-weight: bold; }
+    .compass { fill: #ff87ff; font-family: monospace; font-size: 14px; font-weight: bold; }
+  </style>
+  <text x="10" y="20">
+    <tspan class="acm">     █████╗  ██████╗███╗   ███╗       </tspan><tspan class="compass"> ██████╗ ██████╗ ███╗   ███╗██████╗  █████╗ ███████╗███████╗</tspan>
+  </text>
+  <text x="10" y="36">
+    <tspan class="acm">    ██╔══██╗██╔════╝████╗ ████║       </tspan><tspan class="compass">██╔════╝██╔═══██╗████╗ ████║██╔══██╗██╔══██╗██╔════╝██╔════╝</tspan>
+  </text>
+  <text x="10" y="52">
+    <tspan class="acm">    ███████║██║     ██╔████╔██║</tspan><tspan class="dash"> █████╗</tspan><tspan class="compass">██║     ██║   ██║██╔████╔██║██████╔╝███████║███████╗███████╗</tspan>
+  </text>
+  <text x="10" y="68">
+    <tspan class="acm">    ██╔══██║██║     ██║╚██╔╝██║</tspan><tspan class="dash"> ╚════╝</tspan><tspan class="compass">██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██╔══██║╚════██║╚════██║</tspan>
+  </text>
+  <text x="10" y="84">
+    <tspan class="acm">    ██║  ██║╚██████╗██║ ╚═╝ ██║       </tspan><tspan class="compass">╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ██║  ██║███████║███████║</tspan>
+  </text>
+  <text x="10" y="100">
+    <tspan class="acm">    ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝       </tspan><tspan class="compass"> ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝</tspan>
+  </text>
+</svg>
