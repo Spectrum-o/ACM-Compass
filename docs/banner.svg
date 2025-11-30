@@ -1,25 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 120">
-  <style>
-    .acm { fill: #00d7ff; font-family: monospace; font-size: 14px; font-weight: bold; }
-    .dash { fill: #ffff00; font-family: monospace; font-size: 14px; font-weight: bold; }
-    .compass { fill: #ff87ff; font-family: monospace; font-size: 14px; font-weight: bold; }
-  </style>
-  <text x="10" y="20">
-    <tspan class="acm">     █████╗  ██████╗███╗   ███╗       </tspan><tspan class="compass"> ██████╗ ██████╗ ███╗   ███╗██████╗  █████╗ ███████╗███████╗</tspan>
-  </text>
-  <text x="10" y="36">
-    <tspan class="acm">    ██╔══██╗██╔════╝████╗ ████║       </tspan><tspan class="compass">██╔════╝██╔═══██╗████╗ ████║██╔══██╗██╔══██╗██╔════╝██╔════╝</tspan>
-  </text>
-  <text x="10" y="52">
-    <tspan class="acm">    ███████║██║     ██╔████╔██║</tspan><tspan class="dash"> █████╗</tspan><tspan class="compass">██║     ██║   ██║██╔████╔██║██████╔╝███████║███████╗███████╗</tspan>
-  </text>
-  <text x="10" y="68">
-    <tspan class="acm">    ██╔══██║██║     ██║╚██╔╝██║</tspan><tspan class="dash"> ╚════╝</tspan><tspan class="compass">██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██╔══██║╚════██║╚════██║</tspan>
-  </text>
-  <text x="10" y="84">
-    <tspan class="acm">    ██║  ██║╚██████╗██║ ╚═╝ ██║       </tspan><tspan class="compass">╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ██║  ██║███████║███████║</tspan>
-  </text>
-  <text x="10" y="100">
-    <tspan class="acm">    ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝       </tspan><tspan class="compass"> ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝</tspan>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="100" viewBox="0 0 800 100">
+  <rect width="800" height="100" fill="#0d1117"/>
+  <text font-family="Consolas, 'Courier New', monospace" font-size="11" font-weight="bold" xml:space="preserve">
+    <tspan x="20" y="20" fill="#00d7ff">    █████╗  ██████╗███╗   ███╗       </tspan><tspan fill="#ff87ff"> ██████╗ ██████╗ ███╗   ███╗██████╗  █████╗ ███████╗███████╗</tspan>
+    <tspan x="20" y="33" fill="#00d7ff">   ██╔══██╗██╔════╝████╗ ████║       </tspan><tspan fill="#ff87ff">██╔════╝██╔═══██╗████╗ ████║██╔══██╗██╔══██╗██╔════╝██╔════╝</tspan>
+    <tspan x="20" y="46" fill="#00d7ff">   ███████║██║     ██╔████╔██║</tspan><tspan fill="#ffff00"> █████╗</tspan><tspan fill="#ff87ff">██║     ██║   ██║██╔████╔██║██████╔╝███████║███████╗███████╗</tspan>
+    <tspan x="20" y="59" fill="#00d7ff">   ██╔══██║██║     ██║╚██╔╝██║</tspan><tspan fill="#ffff00"> ╚════╝</tspan><tspan fill="#ff87ff">██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██╔══██║╚════██║╚════██║</tspan>
+    <tspan x="20" y="72" fill="#00d7ff">   ██║  ██║╚██████╗██║ ╚═╝ ██║       </tspan><tspan fill="#ff87ff">╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ██║  ██║███████║███████║</tspan>
+    <tspan x="20" y="85" fill="#00d7ff">   ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝       </tspan><tspan fill="#ff87ff"> ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝</tspan>
   </text>
 </svg>
