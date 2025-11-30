@@ -110,7 +110,7 @@ uv run python server.py
 
 <div align="center">
 <a href="https://github.com/Spectrum-o/ACM-Compass/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Spectrum-o/ACM-Compass&max=400&columns=20"  width="800"/>
+  <img src="https://contrib.rocks/image?repo=Spectrum-o/ACM-Compass&max=400&columns=20" style="width: auto;"/>
 </a>
 </div>
 
