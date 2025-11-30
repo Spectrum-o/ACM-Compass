@@ -42,7 +42,7 @@ def generate_bookmarklet_html():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ACM-Compass 浏览器助手</title>
+    <title>ACM-Compass 助手</title>
     <style>
         body {{
             font-family: system-ui, -apple-system, sans-serif;
@@ -55,7 +55,6 @@ def generate_bookmarklet_html():
         .container {{
             background: white;
             padding: 40px;
-            border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }}
         h1 {{
@@ -70,8 +69,6 @@ def generate_bookmarklet_html():
         .bookmarklet-box {{
             text-align: center;
             padding: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
             margin: 30px 0;
         }}
         .bookmarklet {{
@@ -93,7 +90,7 @@ def generate_bookmarklet_html():
             box-shadow: 0 6px 12px rgba(0,0,0,0.3);
         }}
         .instruction {{
-            color: white;
+            color: black;
             margin-top: 15px;
             font-size: 14px;
         }}
@@ -102,7 +99,6 @@ def generate_bookmarklet_html():
             padding: 20px;
             background: #f8f9fa;
             border-left: 4px solid #4CAF50;
-            border-radius: 4px;
         }}
         .step strong {{
             color: #2c3e50;
@@ -149,41 +145,35 @@ def generate_bookmarklet_html():
 </head>
 <body>
     <div class="container">
-        <h1>🧭 ACM-Compass 浏览器助手</h1>
+        <h1>🧭 ACM-Compass </h1>
 
         <p style="font-size: 16px;">这个工具可以帮你从 <strong>qoj.ac</strong> 或 <strong>ucup.ac</strong> 的比赛页面快速导入数据到 ACM-Compass。</p>
 
-        <div class="warning">
-            <strong>⚠️ 为什么需要书签工具？</strong><br>
-            由于 qoj.ac 和 ucup.ac 使用了 Cloudflare 反爬虫保护，传统的自动化工具无法直接访问。
-            书签工具在你<strong>已登录的真实浏览器</strong>中运行 JavaScript 提取数据，完美绕过检测。
-        </div>
 
         <h2>📥 第一步：安装书签</h2>
 
         <div class="bookmarklet-box">
-            <div style="font-size: 16px; color: white; margin-bottom: 15px;">
+            <div style="font-size: 16px; color: black; margin-bottom: 15px;">
                 👇 <strong>将下面的按钮拖拽到浏览器书签栏</strong> 👇
             </div>
             <a class="bookmarklet" href="{bookmarklet_url}">📊 导入比赛数据</a>
             <div class="instruction">
-                💡 如何显示书签栏？<br>
+                如何显示书签栏？<br>
                 Mac: <code>Cmd+Shift+B</code> | Windows: <code>Ctrl+Shift+B</code>
             </div>
         </div>
 
-        <h2>🚀 第二步：使用书签</h2>
+        <h2>第二步：使用书签</h2>
 
         <div class="step">
             <strong>1️⃣ 启动 ACM-Compass 服务器</strong><br>
-            在终端运行：<code>uv run python server.py</code><br>
+            在终端运行：<code>python server.py</code><br>
             访问：<a href="http://127.0.0.1:7860" target="_blank">http://127.0.0.1:7860</a>
         </div>
 
         <div class="step">
             <strong>2️⃣ 登录并访问比赛 standings 页面</strong><br>
             例如：<code>https://qoj.ac/contest/2513/standings</code><br>
-            ⚠️ <strong>重要：</strong>必须先登录你的账号
         </div>
 
         <div class="step">
@@ -191,11 +181,6 @@ def generate_bookmarklet_html():
             数据将自动提取并发送到 ACM-Compass
         </div>
 
-        <div class="step">
-            <strong>4️⃣ 检查并保存数据</strong><br>
-            ACM-Compass 会自动打开，数据已填充到表单<br>
-            检查无误后点击 <strong>"💾 保存比赛"</strong>
-        </div>
 
         <h2>✨ 功能特性</h2>
         <ul class="feature-list">
@@ -203,11 +188,10 @@ def generate_bookmarklet_html():
             <li>自动获取每题通过人数和尝试人数</li>
             <li>自动识别你的做题状态（AC/尝试/未提交）</li>
             <li>自动提取你的排名</li>
-            <li>完全绕过 Cloudflare 反爬虫</li>
             <li>无需安装浏览器扩展</li>
         </ul>
 
-        <h2>🔧 常见问题</h2>
+        <h2>常见问题</h2>
         <ul class="troubleshoot">
             <li><strong>提示"发送失败"？</strong><br>
                 → 确保服务器正在运行：<code>uv run python server.py</code></li>
@@ -222,13 +206,6 @@ def generate_bookmarklet_html():
                 → 按 <code>Cmd+Shift+B</code> 或 <code>Ctrl+Shift+B</code> 显示书签栏</li>
         </ul>
 
-        <h2>🔒 安全说明</h2>
-        <ul>
-            <li>✅ 所有代码在<strong>你的本地浏览器</strong>中运行</li>
-            <li>✅ 数据仅发送到<strong>本地服务器</strong> (127.0.0.1:7860)</li>
-            <li>✅ 不会发送任何数据到外部服务器</li>
-            <li>✅ 开源透明，可查看 <code>bookmarklet.js</code> 源码</li>
-        </ul>
 
         <div class="footer">
             ACM-Compass | 比赛数据管理工具

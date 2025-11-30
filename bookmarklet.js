@@ -71,47 +71,48 @@
 
         data.total_problems = data.problems.length;
 
-        // Find current user's row to get their status
-        let username = '';
-        const profileLinks = document.querySelectorAll('a.uoj-username');
-        for (const link of profileLinks) {
-            const href = link.getAttribute('href');
-            if (href && href.includes('/user/profile/')) {
-                username = href.split('/').pop();
-                break;
+        // Find current user's row (marked with table-warning class)
+        // Structure: <tr class="table-warning"><td>rank</td><td>username</td><td>score</td><td>A</td><td>B</td>...</tr>
+        const userRow = table.querySelector('tbody tr.table-warning');
+        if (userRow) {
+            const cells = userRow.querySelectorAll('td');
+
+            // First cell is rank
+            if (cells.length > 0) {
+                data.user_rank = cells[0].textContent.trim();
             }
-        }
 
-        if (username) {
-            // Find user's row in the table
-            const rows = table.querySelectorAll('tbody tr');
-            for (const row of rows) {
-                const usernameCell = row.querySelector('a.uoj-username');
-                if (usernameCell && usernameCell.getAttribute('href').includes(username)) {
-                    // Get rank
-                    const rankCell = row.querySelector('td:first-child');
-                    if (rankCell) {
-                        data.user_rank = rankCell.textContent.trim();
-                    }
+            // Cells 3+ are problem statuses (index 0=rank, 1=username, 2=score)
+            for (let i = 3; i < cells.length && i - 3 < data.problems.length; i++) {
+                const cell = cells[i];
+                const problemIndex = i - 3;
+                const cellText = cell.textContent.trim();
 
-                    // Get problem statuses
-                    const problemCells = row.querySelectorAll('td');
-                    // Skip first 3 columns (rank, username, score)
-                    for (let i = 3; i < problemCells.length && i - 3 < data.problems.length; i++) {
-                        const cell = problemCells[i];
-                        const problemIndex = i - 3;
-
-                        // Check cell classes or content to determine status
-                        if (cell.classList.contains('table-success') ||
-                            cell.textContent.includes('+')) {
-                            data.problems[problemIndex].my_status = 'ac';
-                        } else if (cell.textContent.trim() !== '' &&
-                                   cell.textContent.trim() !== '-' &&
-                                   !cell.classList.contains('table-success')) {
+                if (cellText === '') {
+                    // Empty cell = unsubmitted
+                    data.problems[problemIndex].my_status = 'unsubmitted';
+                } else {
+                    // Check for negative number (attempted) or positive/+ (ac)
+                    // Examples: "-6" = attempted, "+", "+1", "+3" = ac
+                    const match = cellText.match(/^([+-]?)(\d*)$/);
+                    if (match) {
+                        const sign = match[1];
+                        if (sign === '-') {
                             data.problems[problemIndex].my_status = 'attempted';
+                        } else {
+                            // '+' or '+N' or just a number means AC
+                            data.problems[problemIndex].my_status = 'ac';
                         }
+                    } else if (cellText.includes('+')) {
+                        // Fallback: contains '+' means AC
+                        data.problems[problemIndex].my_status = 'ac';
+                    } else if (cellText.includes('-')) {
+                        // Fallback: contains '-' means attempted
+                        data.problems[problemIndex].my_status = 'attempted';
+                    } else {
+                        // Any other non-empty content = attempted
+                        data.problems[problemIndex].my_status = 'attempted';
                     }
-                    break;
                 }
             }
         }

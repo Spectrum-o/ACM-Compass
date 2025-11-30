@@ -7,20 +7,24 @@ name = "acm-compass"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "gradio" },
     { name = "pandas" },
     { name = "pydantic" },
     { name = "pymdown-extensions" },
     { name = "setuptools" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "fastapi", specifier = ">=0.121.1" },
     { name = "gradio", specifier = ">=5.49.1" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pydantic", specifier = ">=2.11.10" },
     { name = "pymdown-extensions", specifier = ">=10.12" },
     { name = "setuptools", specifier = ">=80.9.0" },
+    { name = "uvicorn", specifier = ">=0.38.0" },
 ]
 
 [[package]]

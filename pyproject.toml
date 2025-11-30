@@ -10,4 +10,6 @@ dependencies = [
     "pandas>=2.2.3",
     "pymdown-extensions>=10.12",
     "setuptools>=80.9.0",
+    "fastapi>=0.121.1",
+    "uvicorn>=0.38.0",
 ]

@@ -44,9 +44,9 @@ def build_app():
         title="ACM Compass - 题目与比赛追踪",
         theme=gr.themes.Soft()
     ) as app:
-        gr.Markdown("# 🧭 ACM Compass - 题目与比赛追踪系统")
+        gr.Markdown("#ACM Compass - 题目与比赛追踪系统")
         gr.Markdown("本地多人协作的 ACM 题目与比赛管理工具")
-
+        gr.Markdown("及时补题才能有提升")
         with gr.Tabs():
             # Problem management tabs
             build_problem_tab("全部题目", "📚", "all")
