@@ -52,11 +52,34 @@ def save_git_config(repo_url: str, branch: str = "main", cloned: bool = True) ->
 
 
 def is_data_git_repo() -> bool:
-    """Check if data directory is a git repository"""
+    """Check if data directory is an independent git repository (not parent repo)
+
+    Important: We must verify that data/ has its own .git directory,
+    not just that it's inside a parent git repository.
+    """
     if not DATA_DIR.exists():
         return False
-    r = _sh("git rev-parse --is-inside-work-tree", cwd=DATA_DIR)
-    return r["returncode"] == 0 and r["stdout"].strip() == "true"
+
+    # Check if data/ has its own .git directory (independent repo)
+    data_git_dir = DATA_DIR / ".git"
+    if not data_git_dir.exists():
+        return False
+
+    # Verify it's a valid git repository
+    r = _sh("git rev-parse --git-dir", cwd=DATA_DIR)
+    if r["returncode"] != 0:
+        return False
+
+    # The git-dir should be ".git" (relative) for an independent repo in data/
+    # If it returns something like "../.git" or an absolute path outside data/,
+    # then data/ is not an independent repo
+    git_dir = r["stdout"].strip()
+    if git_dir == ".git":
+        return True
+
+    # Check if git_dir resolves to data/.git
+    resolved = (DATA_DIR / git_dir).resolve()
+    return resolved == data_git_dir.resolve()
 
 
 def get_remote_url() -> Optional[str]:
@@ -106,7 +129,7 @@ def clone_data_repo(repo_url: str, branch: str = "main") -> str:
     # Check if data directory already exists
     if DATA_DIR.exists():
         if is_data_git_repo():
-            # Already a git repo, check if it's the same remote
+            # Already an independent git repo, check if it's the same remote
             current_remote = get_remote_url()
             if current_remote == repo_url.strip():
                 output += f"ℹ️  data/ 已经是该仓库的克隆\n"
@@ -122,8 +145,13 @@ def clone_data_repo(repo_url: str, branch: str = "main") -> str:
                 output += "2. 或使用下面的「备份并重新克隆」功能\n"
                 return output
         else:
-            # Directory exists but not a git repo, need to backup
-            output += "⚠️  data/ 目录已存在但不是 Git 仓库\n"
+            # Directory exists but not an independent git repo
+            # Check if it's tracked by parent repo
+            parent_check = _sh("git rev-parse --is-inside-work-tree", cwd=DATA_DIR)
+            if parent_check["returncode"] == 0 and parent_check["stdout"].strip() == "true":
+                output += "⚠️  data/ 目录被父仓库跟踪，需要备份后克隆独立仓库\n"
+            else:
+                output += "⚠️  data/ 目录已存在但不是 Git 仓库\n"
             output += backup_existing_data()
 
     # Clone the repository
@@ -160,7 +188,7 @@ def clone_data_repo(repo_url: str, branch: str = "main") -> str:
 
 def ensure_data_repo(repo_url: str, branch: str = "main") -> tuple:
     """Ensure data directory is a cloned repository. Returns (success, message)"""
-    # Check if already cloned
+    # Check if already cloned as independent repo
     if is_data_git_repo():
         current_remote = get_remote_url()
         if current_remote == repo_url.strip():
@@ -170,6 +198,10 @@ def ensure_data_repo(repo_url: str, branch: str = "main") -> tuple:
 
     # Need to clone
     if DATA_DIR.exists():
+        # Check if tracked by parent repo
+        parent_check = _sh("git rev-parse --is-inside-work-tree", cwd=DATA_DIR)
+        if parent_check["returncode"] == 0 and parent_check["stdout"].strip() == "true":
+            return False, "⚠️  data/ 被父仓库跟踪，请先使用「克隆 Data 仓库」创建独立仓库"
         return False, "⚠️  data/ 存在但不是 Git 仓库，请先使用「克隆 Data 仓库」"
 
     return False, "⚠️  data/ 不存在，请先使用「克隆 Data 仓库」"
@@ -270,6 +302,13 @@ def get_repo_status() -> str:
         return "📂 data/ 目录不存在\n\n请先克隆远程仓库"
 
     if not is_data_git_repo():
+        # Check if data/ is tracked by parent repo
+        parent_check = _sh("git rev-parse --is-inside-work-tree", cwd=DATA_DIR)
+        if parent_check["returncode"] == 0 and parent_check["stdout"].strip() == "true":
+            return ("⚠️ data/ 目录被父仓库跟踪\n\n"
+                    "data/ 目录没有独立的 .git，它可能是父项目的一部分。\n"
+                    "请使用「克隆 Data 仓库」功能来克隆独立的数据仓库。\n\n"
+                    "注意：克隆前会自动备份现有的 data/ 目录。")
         return "📂 data/ 目录存在但不是 Git 仓库\n\n请使用「克隆 Data 仓库」功能"
 
     output = "📂 Data 仓库状态\n\n"
