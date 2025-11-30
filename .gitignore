@@ -29,9 +29,7 @@ Thumbs.db
 
 # Git config cache (data repo settings)
 .git_config.json
-
-# Project-local Chrome browser (no longer used)
-chrome/
+CLAUDE.md
 
 # Generated HTML (can be regenerated from bookmarklet.js)
 bookmarklet.html

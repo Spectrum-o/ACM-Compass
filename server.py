@@ -8,6 +8,7 @@ import gradio as gr
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.ui.banner import print_banner
 from src.ui.problems import build_problem_tab
 from src.ui.contests import build_contest_tab, import_contest_from_browser, set_pending_import
 from src.ui.git_sync import build_git_sync_tab
@@ -68,6 +69,7 @@ def build_app():
 
 def main():
     """Main entry point"""
+    print_banner()
     app = build_app()
 
     # Mount Gradio app to FastAPI with CORS support
