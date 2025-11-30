@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="100" viewBox="0 0 800 100">
+  <text font-family="Consolas, 'Courier New', monospace" font-size="11" font-weight="bold" xml:space="preserve">
+    <tspan x="20" y="20" fill="#00d7ff">    █████╗  ██████╗███╗   ███╗       </tspan><tspan fill="#ff87ff"> ██████╗ ██████╗ ███╗   ███╗██████╗  █████╗ ███████╗███████╗</tspan>
+    <tspan x="20" y="33" fill="#00d7ff">   ██╔══██╗██╔════╝████╗ ████║       </tspan><tspan fill="#ff87ff">██╔════╝██╔═══██╗████╗ ████║██╔══██╗██╔══██╗██╔════╝██╔════╝</tspan>
+    <tspan x="20" y="46" fill="#00d7ff">   ███████║██║     ██╔████╔██║</tspan><tspan fill="#ffff00"> █████╗</tspan><tspan fill="#ff87ff">██║     ██║   ██║██╔████╔██║██████╔╝███████║███████╗███████╗</tspan>
+    <tspan x="20" y="59" fill="#00d7ff">   ██╔══██║██║     ██║╚██╔╝██║</tspan><tspan fill="#ffff00"> ╚════╝</tspan><tspan fill="#ff87ff">██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██╔══██║╚════██║╚════██║</tspan>
+    <tspan x="20" y="72" fill="#00d7ff">   ██║  ██║╚██████╗██║ ╚═╝ ██║       </tspan><tspan fill="#ff87ff">╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ██║  ██║███████║███████║</tspan>
+    <tspan x="20" y="85" fill="#00d7ff">   ╚═╝  ╚═╝ ╚═════╝╚═╝     ╚═╝       </tspan><tspan fill="#ff87ff"> ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝</tspan>
+  </text>
+</svg>
