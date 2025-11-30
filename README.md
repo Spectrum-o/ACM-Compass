@@ -106,3 +106,18 @@ uv run python server.py
 
 本项目采用 GPL-3.0 许可证。详见 [LICENSE](./LICENSE) 文件。
 
+## 👩‍👩‍👧‍👦 Contributors
+
+<div align="center">
+<a href="https://github.com/Spectrum-o/ACM-Compass/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Spectrum-o/ACM-Compass&max=400&columns=20"  width="800"/>
+</a>
+</div>
+
+## 🌟 Star
+
+<div align="center">
+  <p>
+      <img width="800" src="https://api.star-history.com/svg?repos=Spectrum-o/ACM-Compass&type=Date" alt="Star-history">
+  </p>
+</div>
