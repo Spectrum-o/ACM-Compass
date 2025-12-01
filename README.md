@@ -56,6 +56,15 @@ uv run python server.py
 
 打开浏览器访问 `http://127.0.0.1:7860/` 即可。
 
+### 一键启动脚本
+
+- macOS / Linux：`./start.sh`（或 `bash scripts/start.sh`）
+- Windows PowerShell：`./start.ps1`（或 `powershell -ExecutionPolicy Bypass -File scripts/start.ps1`）
+
+脚本优先使用 `uv`，会在缺失时自动安装（优先 `python -m pip install --user -U uv`，失败则用官方安装脚本；Windows 直接在 PowerShell 中即可），随后执行 `uv sync --python 3.13` → `uv run --python 3.13 python server.py`（可通过 `PYTHON` 修改版本/路径）。`uv` 会自动管理 Python 版本。
+
+若安装/使用 `uv` 失败，则回退到创建 `.venv`、`pip install -r requirements.txt`、`python server.py` 的流程。如仍缺少 Python 3.13+，`./start.sh` 会尝试自动安装（优先 `pyenv`，否则使用 `apt`/deadsnakes 或 `brew`）。
+
 ## 界面导航
 
 **5个主要标签页：**
