@@ -1,0 +1,29 @@
+{
+  "name": "acm-compass",
+  "version": "2.0.0",
+  "description": "ACM Compass - 题目与比赛追踪系统 (TypeScript + React + Ant Design)",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta --kill-others \"npm run dev:server\" \"npm run dev:web\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "build": "npm run build:web && npm run build:server",
+    "build:web": "cd web && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "cd server && npm run start",
+    "install:all": "npm install && cd web && npm install && cd ../server && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "acm",
+    "competitive-programming",
+    "problem-tracker",
+    "contest-tracker"
+  ],
+  "license": "MIT"
+}

@@ -8,8 +8,6 @@ __pycache__/
 *.pyd
 .pytest_cache/
 *.egg-info/
-dist/
-build/
 
 # OS/editor junk
 .DS_Store
@@ -33,3 +31,18 @@ CLAUDE.md
 
 # Generated HTML (can be regenerated from bookmarklet.js)
 bookmarklet.html
+
+# Node.js
+node_modules/
+dist/
+build/
+*.local
+
+# Web build output
+web/dist/
+
+# Server build output
+server/dist/
+
+# Package lock files (optional, uncomment if you want to track them)
+# package-lock.json
