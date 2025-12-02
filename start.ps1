@@ -1,4 +1,7 @@
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version Latest
+# ACM-Compass 快速启动脚本 (Windows PowerShell)
 
-& "$PSScriptRoot/scripts/start.ps1" @args
+Set-Location $PSScriptRoot
+
+Write-Host "正在启动 ACM-Compass..."
+npm run install:all
+npm run dev

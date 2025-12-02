@@ -24,46 +24,39 @@ ACM-Compass是一个针对 ACMer 的训练情况进行追踪和记录的工具�
 
 ## 快速开始
 
-### 安装依赖（需 Python 3.13+）
+### 安装依赖（需 Node.js 18+）
 
 ```bash
-# 使用 uv（推荐）
-uv sync
-
-# 或使用 pip
-pip install -r requirements.txt
+# 安装所有依赖
+npm run install:all
 ```
 
-### 安装书签以自动导入
+### 开发模式
 
 ```bash
-# 生成网页
-uv run python generate_bookmarklet.py
+# 同时启动前端和后端开发服务器
+npm run dev
+```
 
-# 或者直接使用python
-python generate_bookmarklet.py
+### 生产模式
+
+```bash
+# 构建前端和后端
+npm run build
+
+# 启动服务器
+npm run start
 ```
 
 ### 启动服务（默认 http://127.0.0.1:7860/）
 
-```bash
-# 方式一：直接运行
-python server.py
-
-# 方式二：使用 uv
-uv run python server.py
-```
-
 打开浏览器访问 `http://127.0.0.1:7860/` 即可。
 
-### 一键启动脚本
+### 安装书签以自动导入
 
-- macOS / Linux：`./start.sh`（或 `bash scripts/start.sh`）
-- Windows PowerShell：`./start.ps1`（或 `powershell -ExecutionPolicy Bypass -File scripts/start.ps1`）
+打开 `bookmarklet.html` 文件，按照页面说明将书签拖拽到浏览器书签栏。
 
-脚本优先使用 `uv`，会在缺失时自动安装（优先 `python -m pip install --user -U uv`，失败则用官方安装脚本；Windows 直接在 PowerShell 中即可），随后执行 `uv sync --python 3.13` → `uv run --python 3.13 python server.py`（可通过 `PYTHON` 修改版本/路径）。`uv` 会自动管理 Python 版本。
-
-若安装/使用 `uv` 失败，则回退到创建 `.venv`、`pip install -r requirements.txt`、`python server.py` 的流程。如仍缺少 Python 3.13+，`./start.sh` 会尝试自动安装（优先 `pyenv`，否则使用 `apt`/deadsnakes 或 `brew`）。
+---
 
 ## 界面导航
 

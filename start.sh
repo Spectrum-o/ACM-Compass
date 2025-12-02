@@ -1,4 +1,8 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+# ACM-Compass 快速启动脚本 (Linux/macOS)
 
-"$(cd "$(dirname "$0")" && pwd)/scripts/start.sh" "$@"
+cd "$(dirname "$0")"
+
+echo "正在启动 ACM-Compass..."
+npm run install:all
+npm run dev

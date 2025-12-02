@@ -122,7 +122,7 @@
 
     // Send data to local server and open the page
     function sendDataToServer(data) {
-        // Send to local Gradio server API
+        // Send to local server API
         fetch('http://127.0.0.1:7860/api/import_contest', {
             method: 'POST',
             headers: {
@@ -132,19 +132,19 @@
         })
         .then(response => response.json())
         .then(result => {
-            // Gradio API returns data in format: {"data": [...]}
+            // API returns data in format: {"data": [...]}
             const apiResult = result.data && result.data[0] ? result.data[0] : result;
 
             if (apiResult.success) {
-                alert('✓ 数据已提取！\\n比赛：' + data.name + '\\n\\n正在打开 ACM-Compass，请检查数据后点击保存按钮。');
+                alert('✓ 数据已提取！\\n比赛：' + data.name + '\\n\\n正在打开 ACM-Compass，请点击「加载导入的数据」按钮。');
                 // Open the contest tab in a new window
-                window.open('http://127.0.0.1:7860/', '_blank');
+                window.open('http://localhost:3000/', '_blank');
             } else {
                 alert('✗ 提取失败：' + (apiResult.message || '未知错误'));
             }
         })
         .catch(error => {
-            alert('✗ 发送失败：' + error.message + '\\n\\n请确保 ACM-Compass 服务器正在运行（http://127.0.0.1:7860）');
+            alert('✗ 连接服务器失败，请确保 ACM-Compass 服务器正在运行 (http://127.0.0.1:7860)');
             console.error('Error:', error);
             console.log('Extracted data:', data);
         });
