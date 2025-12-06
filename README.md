@@ -54,7 +54,9 @@ npm run start
 
 ### 安装书签以自动导入
 
-打开 `bookmarklet.html` 文件，按照页面说明将书签拖拽到浏览器书签栏。
+运行 `python generate_bookmarklet.py` 生成 `bookmarklet.html` 文件。
+
+在浏览器中打开 `bookmarklet.html` 文件，按照页面说明将书签拖拽到浏览器书签栏。
 
 ---
 
@@ -80,7 +82,7 @@ npm run start
 若出现报错如"not_a_git_repo / no_changes / push 失败"，按提示在项目根目录完成 `git init`、`git remote add origin ...` 等配置。
 
 
-## 使用技巧
+## 使用指导
 
 ### 快速编辑
 1. 在表格中点击题目/比赛的 **ID** 列，数据会自动加载到编辑表单
