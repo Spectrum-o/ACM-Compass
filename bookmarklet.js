@@ -1,8 +1,128 @@
 // ACM-Compass 浏览器书签工具
-// 用于从 qoj.ac/ucup.ac 的 standings 页面提取比赛数据
+// 用于从 qoj.ac/ucup.ac 的 standings 页面或比赛 Dashboard 页面提取比赛数据
 
 (function() {
-    // Extract contest data from the current page
+    // Check if current URL is QOJ contest dashboard page (https://qoj.ac/contest/数字)
+    function isQOJContestDashboard() {
+        const url = window.location.href;
+        // Match: https://qoj.ac/contest/数字 (no trailing path like /standings, /submissions, etc.)
+        return /^https?:\/\/qoj\.ac\/contest\/\d+\/?(\?.*)?$/.test(url);
+    }
+
+    // Extract problems from QOJ contest dashboard page
+    function extractQOJDashboardProblems() {
+        const problems = [];
+
+        // Get contest name as source
+        const titleElement = document.querySelector('.text-center h1');
+        const source = titleElement ? titleElement.textContent.trim() : '';
+
+        // Find the problem table in table-responsive
+        const tableResponsive = document.querySelector('.table-responsive');
+        if (!tableResponsive) {
+            alert('未找到题目表格！请确保在比赛 Dashboard 页面上。');
+            return null;
+        }
+
+        const table = tableResponsive.querySelector('table.table-bordered');
+        if (!table) {
+            alert('未找到题目表格！');
+            return null;
+        }
+
+        // Get problem rows from tbody
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 2) return;
+
+            const letterCell = cells[0];
+            const titleCell = cells[1];
+
+            // Get problem letter
+            const letter = letterCell.textContent.trim();
+            if (!letter || letter.length > 2) return; // Skip if not a valid letter
+
+            // Check if solved (has table-success class)
+            const isSolved = letterCell.classList.contains('table-success');
+
+            // Get problem title and link
+            const linkElement = titleCell.querySelector('a');
+            const title = linkElement ? linkElement.textContent.trim() : titleCell.textContent.trim();
+            let link = linkElement ? linkElement.getAttribute('href') : null;
+
+            // Convert relative link to absolute
+            if (link && !link.startsWith('http')) {
+                link = 'https://qoj.ac' + link;
+            }
+
+            problems.push({
+                title: letter + '. ' + title,
+                link: link,
+                source: source,
+                tags: [],
+                solved: isSolved,
+                unsolved_stage: isSolved ? null : '未看题',
+                unsolved_custom_label: null,
+                pass_count: null,
+                notes: null
+            });
+        });
+
+        if (problems.length === 0) {
+            alert('未找到任何题目！');
+            return null;
+        }
+
+        return { problems, source };
+    }
+
+    // Save problems directly to local server
+    function saveProblemsDirectly(data) {
+        const { problems, source } = data;
+        let successCount = 0;
+        let failCount = 0;
+        let solvedCount = 0;
+
+        // Create problems sequentially
+        const createNext = (index) => {
+            if (index >= problems.length) {
+                // All done
+                alert('✓ 题目已保存！\\n\\n来源：' + source + '\\n总数：' + problems.length + '\\n已通过：' + solvedCount + ' 题\\n成功：' + successCount + '\\n失败：' + failCount);
+                return;
+            }
+
+            const problem = problems[index];
+            if (problem.solved) solvedCount++;
+
+            fetch('http://127.0.0.1:7860/api/problems', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(problem)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('HTTP error ' + response.status);
+                }
+                return response.json();
+            })
+            .then(() => {
+                successCount++;
+                createNext(index + 1);
+            })
+            .catch(error => {
+                console.error('Error creating problem:', problem.title, error);
+                failCount++;
+                createNext(index + 1);
+            });
+        };
+
+        createNext(0);
+    }
+
+    // Extract contest data from the current page (standings page)
     function extractContestData() {
         const data = {
             name: '',
@@ -151,9 +271,19 @@
     }
 
     // Main execution
-    const contestData = extractContestData();
-    if (contestData) {
-        console.log('Extracted contest data:', contestData);
-        sendDataToServer(contestData);
+    if (isQOJContestDashboard()) {
+        // QOJ contest dashboard page - extract problems and save directly
+        const problemsData = extractQOJDashboardProblems();
+        if (problemsData) {
+            console.log('Extracted QOJ dashboard problems:', problemsData);
+            saveProblemsDirectly(problemsData);
+        }
+    } else {
+        // Standings page - create contest using original logic
+        const contestData = extractContestData();
+        if (contestData) {
+            console.log('Extracted contest data:', contestData);
+            sendDataToServer(contestData);
+        }
     }
 })();
