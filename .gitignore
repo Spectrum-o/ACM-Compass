@@ -24,7 +24,7 @@ Thumbs.db
 *.log
 *.backup
 *.backup/
-
+server/data/
 # Git config cache (data repo settings)
 .git_config.json
 CLAUDE.md
