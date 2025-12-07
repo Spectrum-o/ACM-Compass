@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table, Button, Form, Input, InputNumber, Select, Space, DatePicker,
-  message, Modal, Card, Typography, Tag, Row, Col, Divider, Alert
+  message, Modal, Card, Typography, Tag, Row, Col, Divider, Alert, Badge
 } from 'antd';
 import {
   EditOutlined, DeleteOutlined, ReloadOutlined,
-  SearchOutlined, ClearOutlined, ImportOutlined
+  SearchOutlined, ClearOutlined, ImportOutlined, CheckCircleOutlined, CloseCircleOutlined
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { contestApi } from '@/services/api';
@@ -31,6 +31,12 @@ const ContestsPage: React.FC = () => {
   const [problems, setProblems] = useState<ContestProblem[]>([]);
   const [statusMsg, setStatusMsg] = useState('');
   const [form] = Form.useForm();
+
+  // 待导入数据状态
+  const [hasPendingContest, setHasPendingContest] = useState(false);
+  const [hasPendingProblems, setHasPendingProblems] = useState(false);
+  const [pendingContestName, setPendingContestName] = useState('');
+  const [pendingProblemsCount, setPendingProblemsCount] = useState(0);
 
   const initProblems = useCallback((count: number, existing?: ContestProblem[]) => {
     const newProblems: ContestProblem[] = [];
@@ -63,11 +69,40 @@ const ContestsPage: React.FC = () => {
     }
   }, [dateRange]);
 
+  // 检查待导入数据状态
+  const checkPendingData = useCallback(async () => {
+    try {
+      // 检查比赛数据
+      const contestData = await contestApi.getPendingImport();
+      if (contestData) {
+        setHasPendingContest(true);
+        setPendingContestName(contestData.name || '');
+      } else {
+        setHasPendingContest(false);
+        setPendingContestName('');
+      }
+
+      // 检查题目数据
+      const problemsResponse = await fetch('/api/pending_problems');
+      const problemsResult = await problemsResponse.json();
+      if (problemsResult.data) {
+        setHasPendingProblems(true);
+        setPendingProblemsCount(problemsResult.data.problems?.length || 0);
+      } else {
+        setHasPendingProblems(false);
+        setPendingProblemsCount(0);
+      }
+    } catch (err) {
+      console.error('检查待导入数据失败:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadContests();
+    checkPendingData();
     // 初始化表单
     initProblems(12);
-  }, [loadContests]);
+  }, [loadContests, checkPendingData]);
 
   // 当题目数量改变时更新题目列表
   const handleTotalProblemsChange = (value: number | null) => {
@@ -172,7 +207,7 @@ const ContestsPage: React.FC = () => {
           });
           setTotalProblems(pendingImportData.total_problems || 12);
           initProblems(pendingImportData.total_problems || 12, pendingImportData.problems || []);
-          setStatusMsg(`✓ 已导入比赛数据: ${pendingImportData.name}，请检查后点击保存`);
+          setStatusMsg(`✓ 已加载比赛数据: ${pendingImportData.name}，可点击「确认导入」保存数据`);
           message.success('已加载导入的数据');
           return;
         }
@@ -182,6 +217,76 @@ const ContestsPage: React.FC = () => {
       console.error('获取待导入数据失败:', err);
       message.error('获取待导入数据失败，请检查服务器连接');
     }
+  };
+
+  // 确认导入：同时保存比赛和题目
+  const handleConfirmImport = async () => {
+    if (!hasPendingContest && !hasPendingProblems) {
+      message.warning('没有待导入的数据');
+      return;
+    }
+
+    Modal.confirm({
+      title: '确认导入',
+      content: (
+        <div>
+          <p>即将导入以下数据：</p>
+          {hasPendingContest && <p>- 比赛：{pendingContestName}</p>}
+          {hasPendingProblems && <p>- 题目：{pendingProblemsCount} 道</p>}
+          <p>确认导入吗？</p>
+        </div>
+      ),
+      okText: '确认导入',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const result = await contestApi.confirmImport();
+          if (result.success) {
+            const messages: string[] = [];
+            if (result.results?.contest) {
+              messages.push(result.results.contest.message);
+            }
+            if (result.results?.problems) {
+              messages.push(result.results.problems.message);
+            }
+            message.success(messages.join('；'));
+            setStatusMsg(`✓ ${messages.join('；')}`);
+
+            // 刷新状态
+            handleClearForm();
+            loadContests();
+            checkPendingData();
+          } else {
+            message.error(result.message || '导入失败');
+          }
+        } catch (err) {
+          console.error('确认导入失败:', err);
+          message.error('导入失败，请检查服务器连接');
+        }
+      },
+    });
+  };
+
+  // 清除待导入数据
+  const handleClearPending = async () => {
+    Modal.confirm({
+      title: '清除待导入数据',
+      content: '确定要清除所有待导入的数据吗？',
+      okText: '清除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await contestApi.clearPendingImport();
+          await fetch('/api/pending_problems', { method: 'DELETE' });
+          checkPendingData();
+          message.success('已清除待导入数据');
+        } catch (err) {
+          console.error('清除失败:', err);
+          message.error('清除失败');
+        }
+      },
+    });
   };
 
   const columns = [
@@ -262,14 +367,61 @@ const ContestsPage: React.FC = () => {
         <Title level={4}>使用浏览器书签导入比赛数据</Title>
         <Text type="secondary">打开 bookmarklet.html 获取浏览器书签工具，在 qoj.ac/ucup.ac 的 standings 页面点击即可导入</Text>
 
+        {/* 待导入数据状态提示 */}
+        {(hasPendingContest || hasPendingProblems) && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginTop: 16 }}
+            message="有待导入的数据"
+            description={
+              <div>
+                {hasPendingContest && (
+                  <div><Badge status="processing" /> 比赛：{pendingContestName}</div>
+                )}
+                {hasPendingProblems && (
+                  <div><Badge status="processing" /> 题目：{pendingProblemsCount} 道</div>
+                )}
+              </div>
+            }
+            action={
+              <Space direction="vertical">
+                <Button
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  onClick={handleConfirmImport}
+                >
+                  确认导入
+                </Button>
+                <Button
+                  danger
+                  icon={<CloseCircleOutlined />}
+                  onClick={handleClearPending}
+                  size="small"
+                >
+                  清除
+                </Button>
+              </Space>
+            }
+          />
+        )}
+
         <div style={{ marginTop: 16 }}>
-          <Button
-            type="primary"
-            icon={<ImportOutlined />}
-            onClick={handleLoadImport}
-          >
-            加载导入的数据
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              icon={<ImportOutlined />}
+              onClick={handleLoadImport}
+            >
+              加载导入的数据
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={checkPendingData}
+            >
+              刷新状态
+            </Button>
+          </Space>
         </div>
 
         <Divider />

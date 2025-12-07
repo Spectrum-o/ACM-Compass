@@ -29,7 +29,7 @@ import {
   gitPush,
   backupAndReclone,
 } from './git.js';
-import type { ProblemInput, ContestInput, ContestProblem } from './types.js';
+import type { ProblemInput, ContestInput, ContestProblem, UnsolvedStage } from './types.js';
 
 const app = express();
 const PORT = 7860;
@@ -200,8 +200,154 @@ interface ImportContestBody {
   user_rank?: string | null;
 }
 
-// 存储待导入的比赛数据
-let pendingImportData: ImportContestBody | null = null;
+// 存储待导入的比赛数据（不在获取时清空，改为确认导入时清空）
+let pendingContestData: ImportContestBody | null = null;
+
+// 存储待导入的题目数据（用于 Dashboard + Standings 两步导入）
+interface PendingProblemsData {
+  contestId: string;
+  source: string;
+  problems: Array<{
+    letter: string;
+    title: string;
+    link: string | null;
+    source: string;
+    tags: string[];
+    solved: boolean;
+    unsolved_stage: UnsolvedStage | null;
+    unsolved_custom_label: string | null;
+    pass_count: number | null;
+    attempt_count: number | null;
+    notes: string | null;
+  }>;
+}
+let pendingProblemsData: PendingProblemsData | null = null;
+
+// 缓存 Dashboard 提取的题目信息
+app.post('/api/import_problems', asyncHandler(async (req: Request, res: Response) => {
+  const { contestId, source, problems } = req.body as PendingProblemsData;
+
+  if (!contestId || !problems || problems.length === 0) {
+    res.status(400).json({ success: false, message: '缺少比赛 ID 或题目数据' });
+    return;
+  }
+
+  // 缓存数据
+  pendingProblemsData = { contestId, source, problems };
+
+  console.log(`📥 缓存题目数据: 比赛 ID=${contestId}, ${problems.length} 道题目`);
+
+  res.json({
+    success: true,
+    message: `已缓存 ${problems.length} 道题目，请跳转到 Standings 页面继续`,
+    contestId,
+    problemCount: problems.length,
+  });
+}));
+
+// 接收 Standings 统计信息并与缓存合并
+app.post('/api/import_standings', asyncHandler(async (req: Request, res: Response) => {
+  const { contestId, stats } = req.body as {
+    contestId: string;
+    stats: Record<string, { pass_count: number; attempt_count: number }>;
+  };
+
+  if (!contestId) {
+    res.status(400).json({ success: false, message: '缺少比赛 ID' });
+    return;
+  }
+
+  // 检查是否有缓存的题目数据
+  if (!pendingProblemsData) {
+    res.status(400).json({
+      success: false,
+      message: '未找到缓存的题目数据，请先在 Dashboard 页面提取题目',
+    });
+    return;
+  }
+
+  // 检查比赛 ID 是否一致
+  if (pendingProblemsData.contestId !== contestId) {
+    res.status(400).json({
+      success: false,
+      message: `比赛 ID 不匹配！缓存的是 ${pendingProblemsData.contestId}，当前是 ${contestId}`,
+    });
+    return;
+  }
+
+  // 合并统计信息
+  let mergedCount = 0;
+  pendingProblemsData.problems.forEach((problem) => {
+    const stat = stats[problem.letter];
+    if (stat) {
+      problem.pass_count = stat.pass_count;
+      problem.attempt_count = stat.attempt_count;
+      mergedCount++;
+    }
+  });
+
+  console.log(`📊 合并统计信息: ${mergedCount}/${pendingProblemsData.problems.length} 道题目`);
+
+  res.json({
+    success: true,
+    message: `已合并 ${mergedCount} 道题目的统计信息，请点击「导入数据」完成导入`,
+    contestId,
+    mergedCount,
+    totalCount: pendingProblemsData.problems.length,
+  });
+}));
+
+// 获取待导入的题目数据
+app.get('/api/pending_problems', asyncHandler(async (_req: Request, res: Response) => {
+  if (pendingProblemsData) {
+    res.json({ data: pendingProblemsData });
+  } else {
+    res.json({ data: null });
+  }
+}));
+
+// 确认导入题目数据
+app.post('/api/confirm_import_problems', asyncHandler(async (_req: Request, res: Response) => {
+  if (!pendingProblemsData) {
+    res.status(400).json({ success: false, message: '没有待导入的题目数据' });
+    return;
+  }
+
+  const { problems, source } = pendingProblemsData;
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const problem of problems) {
+    try {
+      createProblem(problem);
+      successCount++;
+    } catch (error) {
+      console.error(`导入题目失败: ${problem.title}`, error);
+      failCount++;
+    }
+  }
+
+  // 清空缓存
+  const result = {
+    success: true,
+    message: `导入完成：成功 ${successCount}，失败 ${failCount}`,
+    source,
+    successCount,
+    failCount,
+  };
+
+  pendingProblemsData = null;
+
+  console.log(`✅ 题目导入完成: 成功 ${successCount}, 失败 ${failCount}`);
+
+  res.json(result);
+}));
+
+// 清除待导入的题目数据
+app.delete('/api/pending_problems', asyncHandler(async (_req: Request, res: Response) => {
+  pendingProblemsData = null;
+  res.json({ success: true, message: '已清除缓存的题目数据' });
+}));
 
 app.post('/api/import_contest', asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as ImportContestBody;
@@ -213,8 +359,10 @@ app.post('/api/import_contest', asyncHandler(async (req: Request, res: Response)
     contestData = body;
   }
 
-  // 存储待导入数据
-  pendingImportData = contestData;
+  // 存储待导入数据（不立即保存）
+  pendingContestData = contestData;
+
+  console.log(`📥 缓存比赛数据: ${contestData.name}, ${contestData.total_problems} 道题目`);
 
   res.json({
     data: [{
@@ -225,15 +373,114 @@ app.post('/api/import_contest', asyncHandler(async (req: Request, res: Response)
   });
 }));
 
-// 获取待导入的比赛数据
+// 获取待导入的比赛数据（不清空缓存）
 app.get('/api/pending_import', asyncHandler(async (_req: Request, res: Response) => {
-  if (pendingImportData) {
-    const data = pendingImportData;
-    pendingImportData = null; // 获取后清空
-    res.json({ data });
+  if (pendingContestData) {
+    res.json({ data: pendingContestData });
   } else {
     res.json({ data: null });
   }
+}));
+
+// 确认导入比赛数据（与题目一起导入）
+app.post('/api/confirm_import_contest', asyncHandler(async (_req: Request, res: Response) => {
+  const results: {
+    contest?: { success: boolean; message: string; id?: string };
+    problems?: { success: boolean; message: string; successCount?: number; failCount?: number };
+  } = {};
+
+  // 构建比赛题目状态映射 (letter -> my_status)
+  const contestStatusMap: Record<string, 'ac' | 'attempted' | 'unsubmitted'> = {};
+  if (pendingContestData?.problems) {
+    for (const p of pendingContestData.problems) {
+      contestStatusMap[p.letter] = p.my_status;
+    }
+  }
+
+  // 1. 导入比赛数据
+  if (pendingContestData) {
+    try {
+      const contestInput: ContestInput = {
+        name: pendingContestData.name || '',
+        total_problems: pendingContestData.total_problems || 0,
+        problems: pendingContestData.problems || [],
+        rank_str: pendingContestData.user_rank || null,
+        summary: null,
+      };
+      const contest = createContest(contestInput);
+      results.contest = {
+        success: true,
+        message: `比赛 "${contestInput.name}" 导入成功`,
+        id: contest.id,
+      };
+      console.log(`✅ 比赛导入成功: ${contestInput.name}`);
+    } catch (error) {
+      results.contest = {
+        success: false,
+        message: `比赛导入失败: ${error}`,
+      };
+      console.error('比赛导入失败:', error);
+    }
+    pendingContestData = null;
+  }
+
+  // 2. 导入题目数据，同步比赛中的 my_status 到题目的 solved 状态
+  if (pendingProblemsData) {
+    const { problems } = pendingProblemsData;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const problem of problems) {
+      try {
+        // 根据比赛中的 my_status 更新题目的 solved 和 unsolved_stage
+        const contestStatus = contestStatusMap[problem.letter];
+        if (contestStatus === 'ac') {
+          // AC 的题目标记为已解决
+          problem.solved = true;
+          problem.unsolved_stage = null;
+        } else if (contestStatus === 'attempted') {
+          // 已尝试但未 AC 的题目，设置为"知道做法未实现"
+          problem.solved = false;
+          problem.unsolved_stage = '知道做法未实现';
+        }
+        // unsubmitted 保持原状态（未看题）
+
+        createProblem(problem);
+        successCount++;
+      } catch (error) {
+        console.error(`导入题目失败: ${problem.title}`, error);
+        failCount++;
+      }
+    }
+
+    results.problems = {
+      success: failCount === 0,
+      message: `题目导入完成：成功 ${successCount}，失败 ${failCount}`,
+      successCount,
+      failCount,
+    };
+
+    console.log(`✅ 题目导入完成: 成功 ${successCount}, 失败 ${failCount}`);
+    pendingProblemsData = null;
+  }
+
+  // 返回结果
+  if (!results.contest && !results.problems) {
+    res.status(400).json({ success: false, message: '没有待导入的数据' });
+    return;
+  }
+
+  res.json({
+    success: true,
+    message: '导入完成',
+    results,
+  });
+}));
+
+// 清除待导入的比赛数据
+app.delete('/api/pending_import', asyncHandler(async (_req: Request, res: Response) => {
+  pendingContestData = null;
+  res.json({ success: true, message: '已清除缓存的比赛数据' });
 }));
 
 // ----- Git Routes -----
