@@ -178,19 +178,30 @@
     }
 
     // Send standings stats to server for merging (Step 2: Standings)
-    function sendStandingsToServer(contestId, stats) {
-        fetch(API_BASE + '/api/import_standings', {
+    // 同时发送比赛数据和统计信息
+    function sendStandingsToServer(contestId, stats, contestData) {
+        // 先发送比赛数据
+        fetch(API_BASE + '/api/import_contest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contestId: contestId,
-                stats: stats
-            })
+            body: JSON.stringify({ data: [contestData] })
+        })
+        .then(response => response.json())
+        .then(() => {
+            // 再发送统计信息合并
+            return fetch(API_BASE + '/api/import_standings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contestId: contestId,
+                    stats: stats
+                })
+            });
         })
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                alert('✓ 第二步完成！\n\n' + result.message + '\n\n请打开 ACM-Compass 点击「加载导入的数据」按钮完成导入！');
+                alert('✓ 第二步完成！\n\n' + result.message + '\n\n请打开 ACM-Compass 点击「确认导入」按钮完成导入！');
                 window.open('http://localhost:3000/', '_blank');
             } else {
                 alert('✗ 合并统计失败：' + result.message);
@@ -364,12 +375,16 @@
             const hasPending = await checkPendingProblems(contestId);
 
             if (hasPending) {
-                // Has pending data from Dashboard - extract and send stats
+                // Has pending data from Dashboard - extract contest and stats, send together
+                const contestData = extractContestData();
                 const stats = extractStandingsStatsFromDOM();
+                console.log('Standings: 提取到比赛数据:', contestData);
                 console.log('Standings: 提取到统计信息:', stats);
-                sendStandingsToServer(contestId, stats);
+                if (contestData) {
+                    sendStandingsToServer(contestId, stats, contestData);
+                }
             } else {
-                // No pending data - use original contest import logic
+                // No pending data - use original contest import logic (only contest, no problems)
                 const contestData = extractContestData();
                 if (contestData) {
                     console.log('Extracted contest data:', contestData);

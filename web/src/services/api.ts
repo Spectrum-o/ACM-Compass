@@ -86,6 +86,30 @@ export const contestApi = {
     const response = await api.post<ApiResponse<Contest>>('/import_contest', { data: [data] });
     return response.data;
   },
+
+  // 获取待导入的比赛数据
+  getPendingImport: async (): Promise<ImportContestData | null> => {
+    const response = await api.get<{ data: ImportContestData | null }>('/pending_import');
+    return response.data.data;
+  },
+
+  // 确认导入比赛和题目数据
+  confirmImport: async (): Promise<{
+    success: boolean;
+    message: string;
+    results?: {
+      contest?: { success: boolean; message: string; id?: string };
+      problems?: { success: boolean; message: string; successCount?: number; failCount?: number };
+    };
+  }> => {
+    const response = await api.post('/confirm_import_contest');
+    return response.data;
+  },
+
+  // 清除待导入的比赛数据
+  clearPendingImport: async (): Promise<void> => {
+    await api.delete('/pending_import');
+  },
 };
 
 // Git APIs
