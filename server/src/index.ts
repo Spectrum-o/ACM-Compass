@@ -203,6 +203,152 @@ interface ImportContestBody {
 // 存储待导入的比赛数据
 let pendingImportData: ImportContestBody | null = null;
 
+// 存储待导入的题目数据（用于 Dashboard + Standings 两步导入）
+interface PendingProblemsData {
+  contestId: string;
+  source: string;
+  problems: Array<{
+    letter: string;
+    title: string;
+    link: string | null;
+    source: string;
+    tags: string[];
+    solved: boolean;
+    unsolved_stage: string | null;
+    unsolved_custom_label: string | null;
+    pass_count: number | null;
+    attempt_count: number | null;
+    notes: string | null;
+  }>;
+}
+let pendingProblemsData: PendingProblemsData | null = null;
+
+// 缓存 Dashboard 提取的题目信息
+app.post('/api/import_problems', asyncHandler(async (req: Request, res: Response) => {
+  const { contestId, source, problems } = req.body as PendingProblemsData;
+
+  if (!contestId || !problems || problems.length === 0) {
+    res.status(400).json({ success: false, message: '缺少比赛 ID 或题目数据' });
+    return;
+  }
+
+  // 缓存数据
+  pendingProblemsData = { contestId, source, problems };
+
+  console.log(`📥 缓存题目数据: 比赛 ID=${contestId}, ${problems.length} 道题目`);
+
+  res.json({
+    success: true,
+    message: `已缓存 ${problems.length} 道题目，请跳转到 Standings 页面继续`,
+    contestId,
+    problemCount: problems.length,
+  });
+}));
+
+// 接收 Standings 统计信息并与缓存合并
+app.post('/api/import_standings', asyncHandler(async (req: Request, res: Response) => {
+  const { contestId, stats } = req.body as {
+    contestId: string;
+    stats: Record<string, { pass_count: number; attempt_count: number }>;
+  };
+
+  if (!contestId) {
+    res.status(400).json({ success: false, message: '缺少比赛 ID' });
+    return;
+  }
+
+  // 检查是否有缓存的题目数据
+  if (!pendingProblemsData) {
+    res.status(400).json({
+      success: false,
+      message: '未找到缓存的题目数据，请先在 Dashboard 页面提取题目',
+    });
+    return;
+  }
+
+  // 检查比赛 ID 是否一致
+  if (pendingProblemsData.contestId !== contestId) {
+    res.status(400).json({
+      success: false,
+      message: `比赛 ID 不匹配！缓存的是 ${pendingProblemsData.contestId}，当前是 ${contestId}`,
+    });
+    return;
+  }
+
+  // 合并统计信息
+  let mergedCount = 0;
+  pendingProblemsData.problems.forEach((problem) => {
+    const stat = stats[problem.letter];
+    if (stat) {
+      problem.pass_count = stat.pass_count;
+      problem.attempt_count = stat.attempt_count;
+      mergedCount++;
+    }
+  });
+
+  console.log(`📊 合并统计信息: ${mergedCount}/${pendingProblemsData.problems.length} 道题目`);
+
+  res.json({
+    success: true,
+    message: `已合并 ${mergedCount} 道题目的统计信息，请点击「导入数据」完成导入`,
+    contestId,
+    mergedCount,
+    totalCount: pendingProblemsData.problems.length,
+  });
+}));
+
+// 获取待导入的题目数据
+app.get('/api/pending_problems', asyncHandler(async (_req: Request, res: Response) => {
+  if (pendingProblemsData) {
+    res.json({ data: pendingProblemsData });
+  } else {
+    res.json({ data: null });
+  }
+}));
+
+// 确认导入题目数据
+app.post('/api/confirm_import_problems', asyncHandler(async (_req: Request, res: Response) => {
+  if (!pendingProblemsData) {
+    res.status(400).json({ success: false, message: '没有待导入的题目数据' });
+    return;
+  }
+
+  const { problems, source } = pendingProblemsData;
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const problem of problems) {
+    try {
+      createProblem(problem);
+      successCount++;
+    } catch (error) {
+      console.error(`导入题目失败: ${problem.title}`, error);
+      failCount++;
+    }
+  }
+
+  // 清空缓存
+  const result = {
+    success: true,
+    message: `导入完成：成功 ${successCount}，失败 ${failCount}`,
+    source,
+    successCount,
+    failCount,
+  };
+
+  pendingProblemsData = null;
+
+  console.log(`✅ 题目导入完成: 成功 ${successCount}, 失败 ${failCount}`);
+
+  res.json(result);
+}));
+
+// 清除待导入的题目数据
+app.delete('/api/pending_problems', asyncHandler(async (_req: Request, res: Response) => {
+  pendingProblemsData = null;
+  res.json({ success: true, message: '已清除缓存的题目数据' });
+}));
+
 app.post('/api/import_contest', asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as ImportContestBody;
   let contestData: ImportContestBody;

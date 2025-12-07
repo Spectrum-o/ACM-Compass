@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table, Button, Form, Input, InputNumber, Checkbox, Select, Space, DatePicker,
-  message, Modal, Card, Typography, Tag, Row, Col, Tabs, Divider, Alert
+  message, Modal, Card, Typography, Tag, Row, Col, Tabs, Divider, Alert, Badge
 } from 'antd';
 import {
   EditOutlined, DeleteOutlined, ReloadOutlined,
-  SearchOutlined, ClearOutlined
+  SearchOutlined, ClearOutlined, DownloadOutlined
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -32,7 +32,25 @@ const ProblemsPage: React.FC<ProblemsPageProps> = ({ filterMode, title }) => {
   const [solution, setSolution] = useState('');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   const [statusMsg, setStatusMsg] = useState('');
+  const [pendingImportCount, setPendingImportCount] = useState(0);
   const [form] = Form.useForm();
+
+  // Check for pending import data
+  const checkPendingImport = useCallback(async () => {
+    try {
+      const response = await fetch('/api/pending_problems');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.data && result.data.problems) {
+          setPendingImportCount(result.data.problems.length);
+        } else {
+          setPendingImportCount(0);
+        }
+      }
+    } catch {
+      setPendingImportCount(0);
+    }
+  }, []);
 
   const loadProblems = useCallback(async () => {
     setLoading(true);
@@ -50,7 +68,60 @@ const ProblemsPage: React.FC<ProblemsPageProps> = ({ filterMode, title }) => {
 
   useEffect(() => {
     loadProblems();
-  }, [loadProblems]);
+    checkPendingImport();
+  }, [loadProblems, checkPendingImport]);
+
+  // Handle import pending problems
+  const handleImportPendingProblems = async () => {
+    try {
+      const response = await fetch('/api/pending_problems');
+      if (!response.ok) {
+        message.error('获取待导入数据失败');
+        return;
+      }
+      const result = await response.json();
+      if (!result.data || !result.data.problems) {
+        message.warning('没有待导入的数据');
+        return;
+      }
+
+      const { source, problems: pendingProblems } = result.data;
+
+      Modal.confirm({
+        title: '确认导入题目',
+        content: (
+          <div>
+            <p>来源：<strong>{source}</strong></p>
+            <p>题目数量：<strong>{pendingProblems.length}</strong> 道</p>
+            <p>已解决：<strong>{pendingProblems.filter((p: { solved: boolean }) => p.solved).length}</strong> 道</p>
+            <p>确定要导入这些题目吗？</p>
+          </div>
+        ),
+        okText: '确认导入',
+        cancelText: '取消',
+        onOk: async () => {
+          try {
+            const confirmResponse = await fetch('/api/confirm_import_problems', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            const confirmResult = await confirmResponse.json();
+            if (confirmResult.success) {
+              message.success(confirmResult.message);
+              setPendingImportCount(0);
+              loadProblems();
+            } else {
+              message.error(confirmResult.message || '导入失败');
+            }
+          } catch {
+            message.error('导入失败');
+          }
+        },
+      });
+    } catch {
+      message.error('获取待导入数据失败');
+    }
+  };
 
   const handleClearForm = () => {
     setEditingProblem(null);
@@ -267,6 +338,16 @@ const ProblemsPage: React.FC<ProblemsPageProps> = ({ filterMode, title }) => {
           </Col>
           <Col>
             <Space>
+              <Badge count={pendingImportCount} offset={[-5, 5]}>
+                <Button
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  onClick={handleImportPendingProblems}
+                  disabled={pendingImportCount === 0}
+                >
+                  加载导入的数据
+                </Button>
+              </Badge>
               <RangePicker
                 value={dateRange}
                 onChange={(dates) => setDateRange(dates as [Dayjs | null, Dayjs | null])}
