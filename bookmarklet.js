@@ -3,18 +3,18 @@
 
 (function() {
     const API_BASE = 'http://127.0.0.1:7860';
+    const HOST_PATTERN = '(qoj\\.ac|contest\\.ucup\\.ac|ucup\\.ac)';
 
-    // Check if current URL is QOJ contest dashboard page (https://qoj.ac/contest/数字)
-    function isQOJContestDashboard() {
+    // Check if current URL is supported contest dashboard page (qoj/ucup)
+    function isContestDashboard() {
         const url = window.location.href;
-        // Match: https://qoj.ac/contest/数字 (no trailing path like /standings, /submissions, etc.)
-        return /^https?:\/\/qoj\.ac\/contest\/\d+\/?(\?.*)?$/.test(url);
+        return new RegExp(`^https?:\\/\\/${HOST_PATTERN}\\/contest\\/\\d+\\/?(\\?.*)?$`).test(url);
     }
 
-    // Check if current URL is QOJ contest standings page
-    function isQOJContestStandings() {
+    // Check if current URL is supported contest standings page
+    function isContestStandings() {
         const url = window.location.href;
-        return /^https?:\/\/qoj\.ac\/contest\/\d+\/standings/.test(url);
+        return new RegExp(`^https?:\\/\\/${HOST_PATTERN}\\/contest\\/\\d+\\/standings`).test(url);
     }
 
     // Extract contest ID from URL
@@ -23,9 +23,10 @@
         return match ? match[1] : null;
     }
 
-    // Extract problems from QOJ contest dashboard page
-    function extractQOJDashboardProblems() {
+    // Extract problems from contest dashboard page (qoj / ucup)
+    function extractDashboardProblems() {
         const problems = [];
+        const baseUrl = window.location.origin;
 
         // Get contest name as source
         const titleElement = document.querySelector('.text-center h1');
@@ -66,8 +67,8 @@
             let link = linkElement ? linkElement.getAttribute('href') : null;
 
             // Convert relative link to absolute
-            if (link && !link.startsWith('http')) {
-                link = 'https://qoj.ac' + link;
+            if (link) {
+                link = new URL(link, baseUrl).href;
             }
 
             problems.push({
@@ -152,6 +153,8 @@
 
     // Send problems to server for caching (Step 1: Dashboard)
     function sendProblemsToServer(contestId, problemsData) {
+        const standingsUrl = `${window.location.origin}/contest/${contestId}/standings`;
+
         fetch(API_BASE + '/api/import_problems', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -164,7 +167,6 @@
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                const standingsUrl = `https://qoj.ac/contest/${contestId}/standings`;
                 alert('✓ 第一步完成！\n\n' + result.message + '\n\n即将跳转到 Standings 页面...\n请在跳转后再次点击书签！');
                 window.location.href = standingsUrl;
             } else {
@@ -363,14 +365,14 @@
     async function main() {
         const contestId = getContestId();
 
-        if (isQOJContestDashboard()) {
+        if (isContestDashboard()) {
             // Step 1: On Dashboard page - extract problems and send to server
-            const problemsData = extractQOJDashboardProblems();
+            const problemsData = extractDashboardProblems();
             if (problemsData) {
                 console.log('Dashboard: 提取到题目信息:', problemsData);
                 sendProblemsToServer(contestId, problemsData);
             }
-        } else if (isQOJContestStandings()) {
+        } else if (isContestStandings()) {
             // Step 2: On Standings page - check for pending data and send stats
             const hasPending = await checkPendingProblems(contestId);
 
