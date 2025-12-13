@@ -24,7 +24,10 @@ Thumbs.db
 *.log
 *.backup
 *.backup/
+# Nested git repos / server local data
+**/.git/
 server/data/
+server/data.backup*/
 # Git config cache (data repo settings)
 .git_config.json
 CLAUDE.md
